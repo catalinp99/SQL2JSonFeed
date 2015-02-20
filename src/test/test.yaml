@@ -1,0 +1,27 @@
+%YAML 1.2
+---
+
+# ES Type / Top level object
+order:
+# The name of the ES index, optional. If not specified it is the same as type
+  index: main
+# Optional - if not specified, same as parent
+  table: cpOrder
+# This will be the actual ID
+  primaryKey:
+    - orderNumber
+  children:
+# OrderDetails
+    details:
+      table: cpOrderDetails
+      primaryKey:
+        - OrderDetailsId
+# Whether to create a model or not. If set to true the fields will be created in the parent
+# object. Default value is false.
+      noModel: true
+      children:
+# Order Address
+        consignee:
+          table: cpOrderAddress
+          primaryKey:
+            - addressId
