@@ -14,8 +14,9 @@ public class FieldDefinition {
  */
 	@JsonIgnore
 	private String fieldName = null;
-	
-	private String dbField = null;
+
+	// Either one must be not null
+	private String sqlExpression = null;
 	@JsonProperty("type")
 	private FieldType fieldType = null;
 
@@ -31,12 +32,12 @@ public class FieldDefinition {
 		this.fieldName = fieldName;
 	}
 
-	public String getDbField() {
-		return dbField;
+	public String getSqlExpression() {
+		return sqlExpression;
 	}
 
-	public void setDbField(String dbField) {
-		this.dbField = dbField;
+	public void setSqlExpression(String dbField) {
+		this.sqlExpression = dbField;
 	}
 
 	public FieldType getFieldType() {
@@ -49,7 +50,7 @@ public class FieldDefinition {
 
 	@Override
 	public String toString() {
-		return "FieldDefinition [fieldName=" + fieldName + ", dbField="
-				+ dbField + ", fieldType=" + fieldType + "]";
+		return "FieldDefinition [fieldName=" + fieldName + ", sqlExpression="
+				+ sqlExpression + ", fieldType=" + fieldType + "]";
 	}
 }

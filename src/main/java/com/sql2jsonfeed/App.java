@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.sql2jsonfeed.definition.TableDefinition;
 import com.sql2jsonfeed.definition.TypeDefinition;
+import com.sql2jsonfeed.sql.SelectBuilder;
 
 /**
  * Hello world!
@@ -25,12 +26,15 @@ public class App {
 
 	public static void main(String[] args) throws JsonParseException,
 			JsonMappingException, IOException {
-		final String yamlFilePath = "src\\test\\order.yaml";
+		final String yamlFilePath = "src\\main\\resources\\order.yaml";
 
 		// 1. Read configuration
 		TypeDefinition typeDefinition = parseTypeDefinition(yamlFilePath);
-
 		System.out.println(typeDefinition);
+
+		// 2. Create SQL
+		String selectQuery = createSelectForType(typeDefinition);
+		System.out.println(selectQuery);
 	}
 
 	private static TypeDefinition parseTypeDefinition(String yamlFilePath)
@@ -44,5 +48,10 @@ public class App {
 
 		TypeDefinition typeDefinition = new TypeDefinition(tableMap);
 		return typeDefinition;
+	}
+	
+	private static String createSelectForType(TypeDefinition typeDefinition) {
+		SelectBuilder selectBuilder = typeDefinition.buildSelect(new SelectBuilder());
+		return selectBuilder.buildSelectQuery();
 	}
 }

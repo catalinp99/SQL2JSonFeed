@@ -19,6 +19,7 @@ cpOrderConsignee:
   domain: "order"
   primaryKeyColumns:
   - "OrderConsigneeId"
+  referenceColumn: cpOrderDate
   join:
     type: "1to1"
     parentColumns:
@@ -41,6 +42,7 @@ cpOrderConsignee:
 	// list of column names
 	@JsonProperty("primaryKeyColumns")
 	private List<String> pkColumns;
+	private String referenceColumn;
 	@JsonProperty("join")
 	private JoinDefinition joinDef;
 	
@@ -90,6 +92,10 @@ cpOrderConsignee:
 	public void setJoinDef(JoinDefinition joinDef) {
 		this.joinDef = joinDef;
 	}
+	
+	public boolean isJoined() {
+		return this.joinDef != null;
+	}
 
 	public LinkedHashMap<String, FieldDefinition> getFieldsMap() {
 		return fieldsMap;
@@ -106,10 +112,19 @@ cpOrderConsignee:
 		}
 	}
 
+	public String getReferenceColumn() {
+		return referenceColumn;
+	}
+
+	public void setReferenceColumn(String referenceColumn) {
+		this.referenceColumn = referenceColumn;
+	}
+
 	@Override
 	public String toString() {
 		return "TableDefinition [tableName=" + tableName + ", nickname="
 				+ nickname + ", domain=" + domain + ", pkColumns=" + pkColumns
-				+ ", joinDef=" + joinDef + ", fieldsMap=" + fieldsMap + "]";
+				+ ", referenceColumn=" + referenceColumn + ", joinDef="
+				+ joinDef + ", fieldsMap=" + fieldsMap + "]";
 	}
 }
