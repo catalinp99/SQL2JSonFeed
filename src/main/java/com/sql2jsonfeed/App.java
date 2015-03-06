@@ -3,9 +3,17 @@ package com.sql2jsonfeed;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.sql.DataSource;
+
+import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -32,9 +40,12 @@ public class App {
 		TypeDefinition typeDefinition = parseTypeDefinition(yamlFilePath);
 		System.out.println(typeDefinition);
 
-		// 2. Create SQL
-		String selectQuery = createSelectForType(typeDefinition);
-		System.out.println(selectQuery);
+		// 2. Create main SQL
+		SelectBuilder selectBuilder = createSelectForType(typeDefinition);
+		System.out.println(selectBuilder.buildSelectQuery());
+		
+		// 3. Execute SQL and add ES object
+		loadFromDatabase(selectBuilder, typeDefinition, new DomainConfig(typeDefinition.getMainDomain()));
 	}
 
 	private static TypeDefinition parseTypeDefinition(String yamlFilePath)
@@ -50,8 +61,21 @@ public class App {
 		return typeDefinition;
 	}
 	
-	private static String createSelectForType(TypeDefinition typeDefinition) {
+	private static SelectBuilder createSelectForType(TypeDefinition typeDefinition) {
 		SelectBuilder selectBuilder = typeDefinition.buildSelect(new SelectBuilder());
-		return selectBuilder.buildSelectQuery();
+		return selectBuilder;
+	}
+
+	private static void loadFromDatabase(SelectBuilder selectBuilder,
+			TypeDefinition typeDefinition, DomainConfig domainConfig) {
+		DataSource dataSource = null;
+		NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(domainConfig.getDataSource());
+		Map<String, Object> paramsMap = new HashMap<String, Object>();
+		if (domainConfig.getLimit() > 0) {
+			paramsMap.put("limit", domainConfig.getLimit());
+		}
+		// TODO add reference filter to SQL
+		
+		jdbcTemplate.query(selectBuilder.buildSelectQuery(), paramsMap, new DomainRowHandler(domainConfig, typeDefinition));
 	}
 }

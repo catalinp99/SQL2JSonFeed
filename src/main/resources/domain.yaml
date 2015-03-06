@@ -1,0 +1,34 @@
+%YAML 1.2
+---
+
+# String -> Type object
+<type>:
+  # relation to parent object: one object or an array of object; not required for the main domain/object
+  inParent: ONE | MANY
+  # the field that uniquely identifies the domain
+  idField: <field_name_from_field_list>
+  # reference field - for sorting and detecting new values
+  refField: <field_name_from_field_list>
+  # Additional sort fields
+  sortFields:
+    <field_name_from_field_list>: ASC | DESC
+  # List of tables, part of this domain
+  tables:
+    <table_name_1>:
+      as: <nickname>
+	  # optional
+      primaryKeyFields:
+        - <field_name_from_field_list_1>
+        - <field_name_from_field_list_2>
+      # Join expression if required. If not the table is added without a join clause
+      join:
+        type: INNER | LEFT_OUTER
+        parentColumns:
+        - <parentTableName>.<columns1>
+        childColumns:
+        - <childTableName>.<columns2>
+  fields:
+    <field_name_1>:
+      sqlExpression: <sql_expression>
+      type: STRING | DATETIME | NUMBER
+    ...

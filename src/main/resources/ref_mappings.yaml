@@ -1,8 +1,36 @@
 %YAML 1.2
 ---
 
-# String -> Map<String, Object>
-<table>:
+# String -> Domain Object
+<domain>:
+  # relation to parent: one object or an array; not required for the main domain
+  inParent: object | array
+  # the field that uniquely identifies the domain
+  idField: <field_name_from_field_list>
+  # reference field - for sorting and detecting new and updated values
+  refWhenNewField: <field_name_from_field_list>
+  refWhenUpdateField: <field_name_from_field_list>
+  # List of tables, part of this domain
+  tables:
+    <table_name_1>:
+      as: <nickname>
+      primaryKeyFields:
+        - <field_name_from_field_list_1>
+        - <field_name_from_field_list_2>
+      # Join expression if necesarry
+      join:
+        type: INNER | LEFT_OUTER
+        parentColumns:
+        - <parentTableName>.<columns1>
+        childColumns:
+        - <childTableName>.<columns2>
+  fields:
+    <field_name_1>:
+      sqlExpression: <sql_expression>
+      type: STRING | DATETIME | NUMBER
+    ...
+
+
   # -> String
   table: <table>
   # -> List<String>

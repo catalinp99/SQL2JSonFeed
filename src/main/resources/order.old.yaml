@@ -1,32 +1,20 @@
 ---
+# described a single type: order
+# cpOrder
+cpOrder:
+  as: "cpOrder"
+  # domain of the main object, also becomes the ES type
+  domain: "order"
+  
+  # Domain list
 
-# Order. This is the main object.
-order:
-  # the field that uniquely identifies the domain
-  idField: orderNumber
-  # reference field - for sorting and detecting new and updated values
-  refield: localPlacedDate
-  # Additional sort fields
-  sortFields:
-    orderNumber: ASC
-  # List of source tables for this type
-  tables:
-    # cpOrder
-    cpOrder:
-      as: "cpOrder" # 'AS' in the select query
-      primaryKeyFields:
-        - orderNumber
-    # cpOrderDetails
-    cpOrderDetails:
-      as: "cpOrderDetails"
-      domain: "order"
-      join: # INNER | LEFT_OUTER for now
-        type: "INNER"
-        parentColumns:
-        - "cpOrder.OrderDetailsId"
-        childColumns:
-        - "cpOrderDetails.OrderDetailsId"
-  # List of fields for this type
+
+  # will turn into the unique ID - they refer to the field name in the fields list
+  primaryKeyFieldNames:
+    - orderNumber
+  # Refesr to the field name in the fields list
+  referenceFieldName: localPlacedDate
+  # list of fields
   fields:
     orderNumber:
       sqlExpression: "cpOrder.OrderNumber"
@@ -67,36 +55,28 @@ order:
     hubId:
       sqlExpression: "cpOrder.HubId"
       type: STRING
-
-# CONSIGNEE ADDRESS
-order.consignee:
-  # relation to the parent type: one object or an array of object; not required for the top level object
-  # ONE | MANY
-  inParent: ONE
-  # the field that uniquely identifies the domain
-  idField: orderConsigneeId
-  # List of source tables for this type
-  tables:
-    # cpOrderConsignee
-    cpOrderConsignee:
-      as: "cpOrderConsignee"
-      primaryKeyFields:
-        - orderConsigneeId
-      join: # INNER | LEFT_OUTER for now
-        type: "INNER"
-        parentColumns:
-        - "cpOrderDetails.OrderConsigneeId"
-        childColumns:
-    cpOrderAddress:
-      as: "cpOrderAddress"
-      primaryKeyFieldNames:
-        - orderAddressId
-      join: # INNER | LEFT_OUTER
-        type: "INNER"
-        parentColumns:
-        - "cpOrderConsignee.AddressId"
-        childColumns:
-        - "cpOrderAddress.AddressId"
+# cpOrderDetails
+cpOrderDetails:
+  as: "cpOrderDetails"
+  domain: "order"
+  join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
+    type: "ONE_TO_ONE"
+    parentColumns:
+    - "cpOrder.OrderDetailsId"
+    childColumns:
+    - "cpOrderDetails.OrderDetailsId"
+# cpOrderConsignee
+cpOrderConsignee:
+  as: "cpOrderConsignee"
+  domain: "order.consigneeAddress"
+  primaryKeyFieldNames:
+    - orderConsigneeId
+  join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
+    type: "ONE_TO_ONE"
+    parentColumns:
+    - "cpOrderDetails.OrderConsigneeId"
+    childColumns:
+    - "cpOrderConsignee.OrderConsigneeId"
   fields:
     orderConsigneeId:
       sqlExpression: "cpOrderConsignee.OrderConsigneeId"
@@ -104,6 +84,19 @@ order.consignee:
     consigneeNumber:
       sqlExpression: "cpOrderConsignee.ConsigneeNumber"
       type: STRING
+# cpOrderAddress
+cpOrderAddress:
+  as: "cpOrderAddress"
+  domain: "order.consigneeAddress"
+  primaryKeyFieldNames:
+    - orderAddressId
+  join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
+    type: "ONE_TO_ONE"
+    parentColumns:
+    - "cpOrderConsignee.AddressId"
+    childColumns:
+    - "cpOrderAddress.AddressId"
+  fields:
     orderAddressId:
       sqlExpression: "cpOrderAddress.AddressId"
       type: NUMBER
@@ -152,39 +145,18 @@ order.consignee:
     buyerId:
       sqlExpression: "cpOrderAddress.BuyerId"
       type: STRING
-
-# order.orderLines
-order.orderLines:
-  # relation to the parent type: one object or an array of object; not required for the top level object
-  # ONE | MANY
-  inParent: ONE
-  # the field that uniquely identifies the domain
-  idField: orderDetailsLineId
-  # List of tables, part of this domain
-  tables:
-    # cpOrderDetailsLine
-    cpOrderDetailsLine:
-      as: "cpOrderDetailsLine"
-      primaryKeyFieldNames:
-        - orderDetailsLineId
-      join: # INNER | LEFT_OUTER
-        type: "LEFT_OUTER"
-        parentColumns:
-        - "cpOrderDetails.OrderDetailsId"
-        childColumns:
-        - "cpOrderDetailsLine.OrderDetailsId"
-    # cpOrderDetailsCommodity
-    cpOrderDetailsCommodity:
-      as: "cpOrderDetailsCommodity"
-      domain: "order.orderLine"
-      primaryKeyFieldNames:
-        - orderDetailsCommodityId
-      join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
-        type: "ONE_TO_ONE"
-        parentColumns:
-        - "cpOrderDetailsLine.OrderDetailsCommodityId"
-        childColumns:
-        - "cpOrderDetailsCommodity.OrderDetailsCommodityId"
+# cpOrderDetailsLine
+cpOrderDetailsLine:
+  as: "cpOrderDetailsLine"
+  domain: "order.orderLine"
+  primaryKeyFieldNames:
+    - orderDetailsLineId
+  join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
+    type: "ONE_TO_MANY"
+    parentColumns:
+    - "cpOrderDetails.OrderDetailsId"
+    childColumns:
+    - "cpOrderDetailsLine.OrderDetailsId"
   fields:
     orderDetailsLineId:
       sqlExpression: "cpOrderDetailsLine.OrderDetailsLineId"
@@ -195,6 +167,19 @@ order.orderLines:
     quantity:
       sqlExpression: "cpOrderDetailsLine.Quantity"
       type: NUMBER
+# cpOrderDetailsCommodity
+cpOrderDetailsCommodity:
+  as: "cpOrderDetailsCommodity"
+  domain: "order.orderLine"
+  primaryKeyFieldNames:
+    - orderDetailsCommodityId
+  join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
+    type: "ONE_TO_ONE"
+    parentColumns:
+    - "cpOrderDetailsLine.OrderDetailsCommodityId"
+    childColumns:
+    - "cpOrderDetailsCommodity.OrderDetailsCommodityId"
+  fields:
     orderDetailsCommodityId:
       sqlExpression: "cpOrderDetailsCommodity.OrderDetailsCommodityId"
       type: NUMBER

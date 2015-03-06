@@ -6,13 +6,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class JoinDefinition {
 
-	/*
-	 * join: type: "ONE_TO_ONE" parentColumns: -
-	 * "cpOrderDetails.OrderConsigneeId" childColumns: - "OrderConsigneeId"
-	 */
+/*
+  join:
+    type: INNER | LEFT_OUTER
+    parentColumns:
+    - <parentTableName>.<columns1>
+    childColumns:
+    - <childTableName>.<columns2>
+*/
 
 	@JsonProperty("type")
-	private JoinType joinType; // todo enum
+	private JoinTypeEnum joinType; // todo enum
 
 	@JsonProperty("parentColumns")
 	private List<String> parentColumns;
@@ -23,11 +27,11 @@ public class JoinDefinition {
 		super();
 	}
 
-	public JoinType getJoinType() {
+	public JoinTypeEnum getJoinType() {
 		return joinType;
 	}
 
-	public void setJoinType(JoinType joinType) {
+	public void setJoinType(JoinTypeEnum joinType) {
 		this.joinType = joinType;
 	}
 
@@ -48,13 +52,10 @@ public class JoinDefinition {
 	}
 
 	public String getJoinString() {
-		// TODO use constants or enums
 		switch (joinType) {
-		case ONE_TO_ONE:
-		case ONE_TO_MANY:
+		case INNER:
 			return "INNER JOIN";
-		case ZERO_TO_ONE:
-		case ZERO_TO_MANY:
+		case LEFT_OUTER:
 			return "LEFT OUTER JOIN";
 		}
 		return null;

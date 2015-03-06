@@ -1,15 +1,13 @@
 package com.sql2jsonfeed.definition;
 
-public enum JoinType {
+public enum JoinTypeEnum {
 
-	ONE_TO_ONE(1),
-	ZERO_TO_ONE(2),
-	ONE_TO_MANY(3),
-	ZERO_TO_MANY(4);
+	INNER(1),
+	LEFT_OUTER(2);
 
 	private int value;
 
-	private JoinType(int value) {
+	private JoinTypeEnum(int value) {
 		this.value = value;
 	}
 

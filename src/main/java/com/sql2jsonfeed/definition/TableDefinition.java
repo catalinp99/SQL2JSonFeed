@@ -4,8 +4,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sql2jsonfeed.sql.SelectBuilder;
 
 /**
  * @author Catalin
@@ -13,41 +16,37 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class TableDefinition {
 
 /*
-
-cpOrderConsignee:
-  as: "cpOrderConsignee"
-  domain: "order"
-  primaryKeyColumns:
-  - "OrderConsigneeId"
-  referenceColumn: cpOrderDate
-  join:
-    type: "1to1"
-    parentColumns:
-    - "cpOrderDetails.OrderConsigneeId"
-    childColumns:
-    - "OrderConsigneeId"
-  fields:
-    consigneeNumber:
-      dbField: "ConsigneeNumber"
-      type: "string"
-
+    <table_name_1>:
+      as: <nickname>
+	  # optional
+      primaryKeyFields:
+        - <field_name_from_field_list_1>
+        - <field_name_from_field_list_2>
+      # Join expression if required. If not the fields are added without a join clause
+      join:
+        type: INNER | LEFT_OUTER
+        parentColumns:
+        - <parentTableName>.<columns1>
+        childColumns:
+        - <childTableName>.<columns2>
  */
 
 	@JsonIgnore
 	private String tableName;
 	@JsonProperty("as")
 	private String nickname;
-	private String domain;
+//	private String domain;
 	
-	// list of column names
-	@JsonProperty("primaryKeyColumns")
-	private List<String> pkColumns;
-	private String referenceColumn;
+	// list of PK fields - optional
+	@JsonProperty("primaryKeyFields")
+	private List<String> pkFieldNames;
 	@JsonProperty("join")
 	private JoinDefinition joinDef;
-	
-	@JsonProperty("fields")
-	private LinkedHashMap<String, FieldDefinition> fieldsMap;
+
+//	@JsonProperty("refField")
+//	private String referenceFieldName;
+//	@JsonProperty("fields")
+//	private LinkedHashMap<String, FieldDefinition> fieldsMap;
 
 	public TableDefinition() {
 		super();
@@ -69,20 +68,12 @@ cpOrderConsignee:
 		this.nickname = nickname;
 	}
 
-	public String getDomain() {
-		return domain;
+	public List<String> getPkFieldNames() {
+		return pkFieldNames;
 	}
 
-	public void setDomain(String domain) {
-		this.domain = domain;
-	}
-
-	public List<String> getPkColumns() {
-		return pkColumns;
-	}
-
-	public void setPkColumns(List<String> pkColumns) {
-		this.pkColumns = pkColumns;
+	public void setPkFieldNames(List<String> pkFieldNames) {
+		this.pkFieldNames = pkFieldNames;
 	}
 
 	public JoinDefinition getJoinDef() {
@@ -96,35 +87,25 @@ cpOrderConsignee:
 	public boolean isJoined() {
 		return this.joinDef != null;
 	}
-
-	public LinkedHashMap<String, FieldDefinition> getFieldsMap() {
-		return fieldsMap;
-	}
-
-	public void setFieldsMap(LinkedHashMap<String, FieldDefinition> fieldsMap) {
-		this.fieldsMap = fieldsMap;
-		
-		// Set the field name in the FieldDefinition
-		if (fieldsMap != null) {
-			for (Map.Entry<String, FieldDefinition> entry: fieldsMap.entrySet()) {
-				entry.getValue().setFieldName(entry.getKey());
-			}
-		}
-	}
-
-	public String getReferenceColumn() {
-		return referenceColumn;
-	}
-
-	public void setReferenceColumn(String referenceColumn) {
-		this.referenceColumn = referenceColumn;
-	}
+//	
+//	public FieldDefinition lookupFieldDefinition(String fieldName) {
+//		if (fieldsMap == null) {
+//			return null;
+//		}
+//		return fieldsMap.get(fieldName);
+//	}
+//
+//	public FieldDefinition getReferenceField() {
+//		if (StringUtils.isEmpty(referenceFieldName)) {
+//			return null;
+//		}
+//		return fieldsMap.get(referenceFieldName);
+//	}
 
 	@Override
 	public String toString() {
 		return "TableDefinition [tableName=" + tableName + ", nickname="
-				+ nickname + ", domain=" + domain + ", pkColumns=" + pkColumns
-				+ ", referenceColumn=" + referenceColumn + ", joinDef="
-				+ joinDef + ", fieldsMap=" + fieldsMap + "]";
+				+ nickname + ", pkFieldNames=" + pkFieldNames + ", joinDef="
+				+ joinDef + "]";
 	}
 }

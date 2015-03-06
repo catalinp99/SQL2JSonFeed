@@ -14,7 +14,7 @@ import org.apache.commons.lang.text.StrSubstitutor;
 public class SelectBuilder {
 	
 	// Default templates
-	private String templateSelectClause = "SELECT TOP :limit ${select_list}";
+	private String templateSelectClause = "SELECT TOP (:limit) ${select_list}";
 	private String templateFromClause = "   FROM ${from_list}";
 	private String templateWhereClause = "  WHERE ${where_list}";
 	private String templateOrderByClause = "  ORDER BY ${order_by_list}";
