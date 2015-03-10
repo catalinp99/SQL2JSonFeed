@@ -4,24 +4,27 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.springframework.jdbc.core.RowCountCallbackHandler;
 
+import com.sql2jsonfeed.definition.DomainDefinition;
 import com.sql2jsonfeed.definition.TypeDefinition;
+import com.sql2jsonfeed.definition.TypeRow;
 
 public class DomainRowHandler extends RowCountCallbackHandler {
 
 	private DomainConfig domainConfig = null;
-	private TypeDefinition typeDefinition = null;
+	private DomainDefinition domainDefinition = null;
+	private LinkedHashMap<Object, Map<String, Object>> valuesMapList = new LinkedHashMap<Object, Map<String, Object>>();
 	
-	private LinkedHashMap<String, Object> domainRows = new LinkedHashMap<String, Object>();
-
 	public DomainRowHandler(DomainConfig domainConfig,
-			TypeDefinition typeDefinition) {
+			DomainDefinition domainDefinition) {
 		super();
 		this.domainConfig = domainConfig;
-		this.typeDefinition = typeDefinition;
+		this.domainDefinition = domainDefinition;
 	}
 
 	public DomainConfig getDomainConfig() {
@@ -32,12 +35,16 @@ public class DomainRowHandler extends RowCountCallbackHandler {
 		this.domainConfig = domainConfig;
 	}
 
-	public TypeDefinition getTypeDefinition() {
-		return typeDefinition;
+	public DomainDefinition getTypeDefinition() {
+		return domainDefinition;
 	}
 
-	public void setTypeDefinition(TypeDefinition typeDefinition) {
-		this.typeDefinition = typeDefinition;
+	public void setTypeDefinition(DomainDefinition domainDefinition) {
+		this.domainDefinition = domainDefinition;
+	}
+	
+	public Map<Object, Map<String, Object>> getValuesMapList() {
+		return valuesMapList;
 	}
 
 	/* 
@@ -47,19 +54,24 @@ public class DomainRowHandler extends RowCountCallbackHandler {
 	 */
 	@Override
 	protected void processRow(ResultSet rs, int rowNum) throws SQLException {
-		// Create here the ES object
+
+		// 1. Extract values -> each type definition has to extract each own values, as HashMap;
+		// including the ID
+		Map<String, Map<String, Object>> rowValues = domainDefinition.extractRow(rs, rowNum);
+		System.out.println(rowNum + ": " + rowValues);
 		
-		// 1. Get the main domain PK as string ID
-		// domainConfig.createID(pkValueList)
+		// 2. Merge values into the existing map
+		Object rootId = domainDefinition.getRootId(rowValues);
+		Map<String, Object> rootValues = valuesMapList.get(rootId);
+		rootValues = domainDefinition.mergeValues(rootValues, rowValues);
 		
-		
-		// 2. Lookup if
-		
+		valuesMapList.put(rootId, rootValues);
+		System.out.println(rowNum + ": " + valuesMapList);
 	}
 
 	@Override
 	public String toString() {
 		return "DomainRowHandler [domainConfig=" + domainConfig
-				+ ", typeDefinition=" + typeDefinition + "]";
+				+ ", domainDefinition=" + domainDefinition + "]";
 	}
 }

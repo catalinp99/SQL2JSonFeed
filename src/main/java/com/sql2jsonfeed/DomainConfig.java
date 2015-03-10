@@ -40,7 +40,7 @@ public class DomainConfig {
 	
 	public int getLimit() {
 		// TODO from config
-		return 200;
+		return 10;
 	}
 	
 	public Object getLastReferenceValue() {

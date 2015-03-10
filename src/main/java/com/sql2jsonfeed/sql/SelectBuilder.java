@@ -13,8 +13,15 @@ import org.apache.commons.lang.text.StrSubstitutor;
  */
 public class SelectBuilder {
 	
+	private static final String COMMA = ", ";
+	private static final String NL = "\n";
+	private static final String INDENT = "     ";
+	// Placeholder NAMES
+	public static final String P_LIMIT = "limit";
+	public static final String P_REF_VALUE = "last_ref_value";
+
 	// Default templates
-	private String templateSelectClause = "SELECT TOP (:limit) ${select_list}";
+	private String templateSelectClause = "SELECT TOP (:" + P_LIMIT + ") ${select_list}";
 	private String templateFromClause = "   FROM ${from_list}";
 	private String templateWhereClause = "  WHERE ${where_list}";
 	private String templateOrderByClause = "  ORDER BY ${order_by_list}";
@@ -24,10 +31,6 @@ public class SelectBuilder {
 	private StringBuffer fromListBuilder = new StringBuffer();
 	private StringBuffer whereListBuilder = new StringBuffer();
 	private StringBuffer orderByBuilder = new StringBuffer();
-
-	private static final String COMMA = ", ";
-	private static final String NL = "\n";
-	private static final String INDENT = "     ";
 
 	public SelectBuilder() {
 		// TODO get templates here
@@ -80,13 +83,13 @@ public class SelectBuilder {
 		return this;
 	}
 
-	public SelectBuilder orderBy(String orderByField, boolean asc) {
+	public SelectBuilder orderBy(String orderByField, SortTypeEnum sortType) {
 		if (orderByBuilder.length() > 0) {
 			orderByBuilder.append(NL);
 			orderByBuilder.append(INDENT + COMMA);
 		}
 		orderByBuilder.append(orderByField);
-		if (asc) {
+		if (sortType == SortTypeEnum.ASC) {
 			orderByBuilder.append(" ASC");
 		} else {
 			orderByBuilder.append(" DESC");

@@ -2,10 +2,10 @@
 
 # Order. This is the main object.
 order:
-  # the field that uniquely identifies the domain
+  # the field that uniquely identifies the domain / type
   idField: orderNumber
   # reference field - for sorting and detecting new and updated values
-  refield: localPlacedDate
+  refField: localPlacedDate
   # Additional sort fields
   sortFields:
     orderNumber: ASC
@@ -14,12 +14,12 @@ order:
     # cpOrder
     cpOrder:
       as: "cpOrder" # 'AS' in the select query
+      # Not used for now ...
       primaryKeyFields:
         - orderNumber
     # cpOrderDetails
     cpOrderDetails:
       as: "cpOrderDetails"
-      domain: "order"
       join: # INNER | LEFT_OUTER for now
         type: "INNER"
         parentColumns:
@@ -72,8 +72,8 @@ order:
 order.consignee:
   # relation to the parent type: one object or an array of object; not required for the top level object
   # ONE | MANY
-  inParent: ONE
-  # the field that uniquely identifies the domain
+  parentRelation: ONE
+  # the field that uniquely identifies the type
   idField: orderConsigneeId
   # List of source tables for this type
   tables:
@@ -87,9 +87,10 @@ order.consignee:
         parentColumns:
         - "cpOrderDetails.OrderConsigneeId"
         childColumns:
+        - "cpOrderConsignee.OrderConsigneeId"
     cpOrderAddress:
       as: "cpOrderAddress"
-      primaryKeyFieldNames:
+      primaryKeyFields:
         - orderAddressId
       join: # INNER | LEFT_OUTER
         type: "INNER"
@@ -157,15 +158,15 @@ order.consignee:
 order.orderLines:
   # relation to the parent type: one object or an array of object; not required for the top level object
   # ONE | MANY
-  inParent: ONE
-  # the field that uniquely identifies the domain
+  parentRelation: MANY
+  # the field that uniquely identifies the type
   idField: orderDetailsLineId
-  # List of tables, part of this domain
+  # List of tables, part of this type
   tables:
     # cpOrderDetailsLine
     cpOrderDetailsLine:
       as: "cpOrderDetailsLine"
-      primaryKeyFieldNames:
+      primaryKeyFields:
         - orderDetailsLineId
       join: # INNER | LEFT_OUTER
         type: "LEFT_OUTER"
@@ -176,11 +177,10 @@ order.orderLines:
     # cpOrderDetailsCommodity
     cpOrderDetailsCommodity:
       as: "cpOrderDetailsCommodity"
-      domain: "order.orderLine"
-      primaryKeyFieldNames:
+      primaryKeyFields:
         - orderDetailsCommodityId
       join: # ONE_TO_ONE, ZERO_TO_ONE, ONE_TO_MANY, ZERO_TO_MANY; default is ONE_TO_ONE
-        type: "ONE_TO_ONE"
+        type: "INNER"
         parentColumns:
         - "cpOrderDetailsLine.OrderDetailsCommodityId"
         childColumns:

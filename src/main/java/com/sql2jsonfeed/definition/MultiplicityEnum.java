@@ -12,5 +12,5 @@ public enum MultiplicityEnum {
 
 	public int getValue() {
 		return value;
-
+	}
 }

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.sql2jsonfeed.definition.DomainDefinition;
 import com.sql2jsonfeed.definition.TableDefinition;
 import com.sql2jsonfeed.definition.TypeDefinition;
 import com.sql2jsonfeed.sql.SelectBuilder;
@@ -37,45 +38,47 @@ public class App {
 		final String yamlFilePath = "src\\main\\resources\\order.yaml";
 
 		// 1. Read configuration
-		TypeDefinition typeDefinition = parseTypeDefinition(yamlFilePath);
-		System.out.println(typeDefinition);
+		DomainDefinition domainDefinition = parseDomainDefinition(yamlFilePath);
+		System.out.println(domainDefinition);
 
 		// 2. Create main SQL
-		SelectBuilder selectBuilder = createSelectForType(typeDefinition);
+		SelectBuilder selectBuilder = createSelectForDomain(domainDefinition);
 		System.out.println(selectBuilder.buildSelectQuery());
 		
 		// 3. Execute SQL and add ES object
-		loadFromDatabase(selectBuilder, typeDefinition, new DomainConfig(typeDefinition.getMainDomain()));
+		loadFromDatabase(selectBuilder, domainDefinition, new DomainConfig("order"));
 	}
 
-	private static TypeDefinition parseTypeDefinition(String yamlFilePath)
+	private static DomainDefinition parseDomainDefinition(String yamlFilePath)
 			throws JsonParseException, JsonMappingException,
 			FileNotFoundException, IOException {
 		// 1. Read configuration
-		Map<String, TableDefinition> tableMap = mapper.readValue(
+		LinkedHashMap<String, TypeDefinition> typesMap = mapper.readValue(
 				new FileReader(yamlFilePath),
-				new TypeReference<LinkedHashMap<String, TableDefinition>>() {
+				new TypeReference<LinkedHashMap<String, TypeDefinition>>() {
 				});
 
-		TypeDefinition typeDefinition = new TypeDefinition(tableMap);
-		return typeDefinition;
+		DomainDefinition domainDefinition = new DomainDefinition(typesMap);
+		return domainDefinition;
 	}
 	
-	private static SelectBuilder createSelectForType(TypeDefinition typeDefinition) {
-		SelectBuilder selectBuilder = typeDefinition.buildSelect(new SelectBuilder());
+	private static SelectBuilder createSelectForDomain(DomainDefinition domainDefinition) {
+		SelectBuilder selectBuilder = domainDefinition.buildSelect(new SelectBuilder(), false);
 		return selectBuilder;
 	}
 
 	private static void loadFromDatabase(SelectBuilder selectBuilder,
-			TypeDefinition typeDefinition, DomainConfig domainConfig) {
-		DataSource dataSource = null;
+			DomainDefinition domainDefinition, DomainConfig domainConfig) {
 		NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(domainConfig.getDataSource());
 		Map<String, Object> paramsMap = new HashMap<String, Object>();
 		if (domainConfig.getLimit() > 0) {
-			paramsMap.put("limit", domainConfig.getLimit());
+			paramsMap.put(SelectBuilder.P_LIMIT, domainConfig.getLimit());
 		}
 		// TODO add reference filter to SQL
 		
-		jdbcTemplate.query(selectBuilder.buildSelectQuery(), paramsMap, new DomainRowHandler(domainConfig, typeDefinition));
+		DomainRowHandler domainRowHandler = new DomainRowHandler(domainConfig, domainDefinition);
+		jdbcTemplate.query(selectBuilder.buildSelectQuery(), paramsMap, domainRowHandler);
+		
+		System.out.println(domainRowHandler.getValuesMapList());
 	}
 }

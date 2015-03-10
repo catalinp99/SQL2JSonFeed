@@ -3,8 +3,8 @@
 
 # String -> Type object
 <type>:
-  # relation to parent object: one object or an array of object; not required for the main domain/object
-  inParent: ONE | MANY
+  # relation from parent object to this: one object or an array of object; not required for the main domain/object
+  parentRelation: ONE | MANY
   # the field that uniquely identifies the domain
   idField: <field_name_from_field_list>
   # reference field - for sorting and detecting new values
