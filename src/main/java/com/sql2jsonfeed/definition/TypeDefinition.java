@@ -3,9 +3,11 @@ package com.sql2jsonfeed.definition;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -235,10 +237,24 @@ public class TypeDefinition {
 		switch (fieldDef.getFieldType()) {
 		case STRING:
 			return rs.getString(selectItemName);
-		case DATETIME:
+		case DATE:
 			return (java.util.Date) rs.getDate(selectItemName);
-		case NUMBER:
-			return rs.getBigDecimal(selectItemName);
+		case DATETIME:
+			// TODO - must be the DB SERVER time zone
+			return (java.util.Date) rs.getTimestamp(selectItemName,
+					Calendar.getInstance(TimeZone.getTimeZone("UTC")));
+		case FLOAT:
+			return rs.getFloat(selectItemName);
+		case DOUBLE:
+			return rs.getDouble(selectItemName);
+		case INTEGER:
+			return rs.getInt(selectItemName);
+		case LONG:
+			return rs.getLong(selectItemName);
+		case SHORT:
+			return rs.getShort(selectItemName);
+		case BOOLEAN:
+			return rs.getBoolean(selectItemName);
 		}
 		return null;
 	}

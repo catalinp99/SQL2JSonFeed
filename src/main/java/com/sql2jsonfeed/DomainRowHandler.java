@@ -1,18 +1,13 @@
 package com.sql2jsonfeed;
 
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Types;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.jdbc.core.RowCountCallbackHandler;
 
 import com.sql2jsonfeed.definition.DomainDefinition;
-import com.sql2jsonfeed.definition.TypeDefinition;
-import com.sql2jsonfeed.definition.TypeRow;
 
 public class DomainRowHandler extends RowCountCallbackHandler {
 
@@ -58,15 +53,18 @@ public class DomainRowHandler extends RowCountCallbackHandler {
 		// 1. Extract values -> each type definition has to extract each own values, as HashMap;
 		// including the ID
 		Map<String, Map<String, Object>> rowValues = domainDefinition.extractRow(rs, rowNum);
-		System.out.println(rowNum + ": " + rowValues);
+//		System.out.println(rowNum + ": " + rowValues);
 		
 		// 2. Merge values into the existing map
 		Object rootId = domainDefinition.getRootId(rowValues);
 		Map<String, Object> rootValues = valuesMapList.get(rootId);
+//		System.out.println(rowNum + ": " + rootValues);
+//		System.out.println(rowNum + ": " + valuesMapList);
 		rootValues = domainDefinition.mergeValues(rootValues, rowValues);
-		
+//		System.out.println(rowNum + ": " + rootValues);
+//		System.out.println(rowNum + ": " + valuesMapList);
 		valuesMapList.put(rootId, rootValues);
-		System.out.println(rowNum + ": " + valuesMapList);
+//		System.out.println(rowNum + ": " + valuesMapList);
 	}
 
 	@Override

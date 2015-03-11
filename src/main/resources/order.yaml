@@ -101,13 +101,13 @@ order.consignee:
   fields:
     orderConsigneeId:
       sqlExpression: "cpOrderConsignee.OrderConsigneeId"
-      type: NUMBER
+      type: LONG
     consigneeNumber:
       sqlExpression: "cpOrderConsignee.ConsigneeNumber"
       type: STRING
     orderAddressId:
       sqlExpression: "cpOrderAddress.AddressId"
-      type: NUMBER
+      type: LONG
     firstName:
       sqlExpression: "cpOrderAddress.FirstName"
       type: STRING
@@ -118,10 +118,10 @@ order.consignee:
       sqlExpression: "cpOrderAddress.middleName"
       type: STRING
     name:
-      sqlExpression: "cpOrderAddress.FirstName + ' ' + cpOrderAddress.MiddleName + ' ' + cpOrderAddress.LastName"
+      sqlExpression: "cpOrderAddress.FirstName + ' ' + COALESCE(cpOrderAddress.MiddleName, '') + ' ' + cpOrderAddress.LastName"
       type: STRING
     street:
-      sqlExpression: "cpOrderAddress.Street1 + ' ' + cpOrderAddress.Street2 + ' ' + cpOrderAddress.Street3"
+      sqlExpression: "COALESCE(cpOrderAddress.Street1, '') + ' ' + COALESCE(cpOrderAddress.Street2, '') + ' ' + COALESCE(cpOrderAddress.Street3, '')"
       type: STRING
     company:
       sqlExpression: "cpOrderAddress.Company"
@@ -188,16 +188,16 @@ order.orderLines:
   fields:
     orderDetailsLineId:
       sqlExpression: "cpOrderDetailsLine.OrderDetailsLineId"
-      type: NUMBER
+      type: LONG
     countryOfOriginCode:
       sqlExpression: "cpOrderDetailsLine.CountryOfOrigin"
       type: STRING
     quantity:
       sqlExpression: "cpOrderDetailsLine.Quantity"
-      type: NUMBER
+      type: SHORT
     orderDetailsCommodityId:
       sqlExpression: "cpOrderDetailsCommodity.OrderDetailsCommodityId"
-      type: NUMBER
+      type: LONG
     sku:
       sqlExpression: "cpOrderDetailsCommodity.SKU"
       type: STRING

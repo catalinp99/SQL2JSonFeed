@@ -30,5 +30,5 @@
   fields:
     <field_name_1>:
       sqlExpression: <sql_expression>
-      type: STRING | DATETIME | NUMBER
+      type: FLOAT | DOUBLE | INTEGER | LONG | SHORT | BOOLEAN | STRING | DATE | DATETIME
     ...

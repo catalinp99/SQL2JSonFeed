@@ -46,4 +46,19 @@ public class DomainConfig {
 	public Object getLastReferenceValue() {
 		return null;
 	}
+
+	public String getESClusterName() {
+		// TODO from config
+		return "Olympus";
+	}
+
+	public String getESIndex() {
+		// TODO from config
+		return "test";
+	}
+
+	public String getESType() {
+		// TODO from config
+		return domain;
+	}
 }
