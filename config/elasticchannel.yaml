@@ -1,0 +1,48 @@
+---
+
+# General parameters
+
+# Interval between two consecutive runs; default=30
+runIntervalMins: 10
+# How many records to be processed in one batch. Default value is 5000.
+batchSize: 5000
+# ES cluster name - global. It can also be defined at channel level.
+clusterName: Olympus144
+
+# Datasources definition
+datasources:
+  ordersDS:
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    url: jdbc:sqlserver://192.168.241.45:1433;databaseName=xbec01p;user=xbecuser;password=xbecuser;
+    # Username if not included in the URL
+    # username: xbecuser
+    # password: xbecuser
+
+# SQL Templates, per each driver type
+sqlTemplates:
+  com.microsoft.sqlserver.jdbc.SQLServerDriver:
+    templateSelectClause: "SELECT TOP (:limit) ${select_list}"
+    # templateFromClause: "  FROM ${from_list}"
+    # templateWhereClause: "  WHERE ${where_list}"
+    # templateOrderByClause: "  ORDER BY ${order_by_list}"
+    templateTableInFromClause: "${table_name} AS ${alias}"
+    templateColumnInSelectList: "${column_name} AS ${alias}"
+
+# Channels definition
+channels:
+  # Channel name/ID
+  ordersFromCPEDB:
+    # ES cluster to be used for this channel.
+    # clusterName: Olympus144
+    # The target ES Index
+    esIndex: op
+    # The target ES Type
+    esType: order
+    # Datasource for this channel (if JDBC/SQL based)
+    datasource: ordersDS
+    # Optional, if not defined it is <domain>.yaml
+    domainDefinitionFile: order.yaml
+    # Max records in one run - optional, defaults to 1,000,000
+    maxRecords: 300
+    # Batch size - default is the global value
+    batchSize: 100
