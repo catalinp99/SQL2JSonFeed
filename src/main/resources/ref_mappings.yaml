@@ -4,12 +4,17 @@
 # String -> Domain Object
 <domain>:
   # relation to parent: one object or an array; not required for the main domain
-  inParent: object | array
-  # the field that uniquely identifies the domain
+  parentRelation: ONE | MANY
+  # the field that uniquely identifies the domain; REQUIRED
   idField: <field_name_from_field_list>
   # reference field - for sorting and detecting new and updated values
-  refWhenNewField: <field_name_from_field_list>
-  refWhenUpdateField: <field_name_from_field_list>
+  refField: <field_name_from_field_list>
+  # Where filters
+  whereFilters:
+    - <where_clause_value>
+  # NOT YET reference field - for sorting and detecting new and updated values
+#  refWhenNewField: <field_name_from_field_list>
+#  refWhenUpdateField: <field_name_from_field_list>
   # List of tables, part of this domain
   tables:
     <table_name_1>:

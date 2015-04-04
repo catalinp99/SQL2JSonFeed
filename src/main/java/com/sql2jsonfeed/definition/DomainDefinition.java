@@ -1,6 +1,5 @@
 package com.sql2jsonfeed.definition;
 
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -9,11 +8,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.util.StringUtils;
+
 import com.sql2jsonfeed.sql.SelectBuilder;
 
 /**
- * @author Catalin
- *
+ * @author Take Moa
  */
 public class DomainDefinition {
 
@@ -86,6 +86,8 @@ public class DomainDefinition {
 		return rootValues;
 	}
 	
+	private static final String ZERO = "0";
+	
 	/**
 	 * Recursive function to merge the values to the parent
 	 * 
@@ -93,47 +95,53 @@ public class DomainDefinition {
 	 * @param childType
 	 * @param rowValues
 	 */
+	@SuppressWarnings("unchecked")
 	private void mergeValuesToParent(Map<String, Object> parentValues,
 			TypeDefinition childType, Map<String, Map<String, Object>> rowValues) {
 		
-		Map<String, Object> thisValues = rowValues.get(childType.getTypeName());
-		if(thisValues == null) {
-			thisValues = new LinkedHashMap<String, Object>();
+		// Values that are coming in the RS record
+		Map<String, Object> childRowValues = rowValues.get(childType.getTypeName());
+		if (childRowValues == null || childRowValues.isEmpty()) {
+			return; // nothing to do
+		}
+		// Check ID is not NULL, or ZERO
+		String idFieldKey = childType.getIdFieldKey();
+		Object idFieldValue = childRowValues.get(idFieldKey);
+		if (idFieldValue == null || idFieldValue.toString().equals(ZERO)) {
+			return; // nothing to do again
 		}
 		
+		// Resulting child values
 		Map<String, Object> childValues = null;
 		
 		if (childType.getParentRelation() == MultiplicityEnum.ONE) {
 			childValues = (Map<String, Object>)parentValues.get(childType.getParentFieldName());
 			if (childValues == null) {
-				childValues = thisValues;
+				childValues = childRowValues;
 				parentValues.put(childType.getParentFieldName(), childValues);
 			} else {
 				// TODO verify they have the same ID and/or values
 				// nothing to do
 			}
 		} else { // MultiplicityEnum.MANY
+			// Add to list only if not empty
 			List<Map<String, Object>> childValuesList = (List<Map<String, Object>>)parentValues.get(childType.getParentFieldName());
 			if (childValuesList == null) { // First time
 				childValuesList = new ArrayList<Map<String, Object>>();
-				childValues = thisValues;
+				childValues = childRowValues;
 				childValuesList.add(childValues);
 				parentValues.put(childType.getParentFieldName(), childValuesList);
 			} else {
-				// Add it only if not already there
-				String idFieldName = childType.getIdFieldKey();
-				if (idFieldName != null) {
-					Object idValue = thisValues.get(idFieldName);
-					assert(idValue != null);
-					for (Map<String, Object> childValuesObject: childValuesList) {
-						if (idValue.equals(childValuesObject.get(idFieldName))) {
-							childValues = childValuesObject; // already there
-							break;
-						}
+				// Check if already in the list
+				for (Map<String, Object> childValuesObject: childValuesList) {
+					if (idFieldValue.equals(childValuesObject.get(idFieldKey))) {
+						childValues = childValuesObject; // already there
+						break;
 					}
 				}
+				// Add it only if not already there
 				if (childValues == null) {
-					childValues = thisValues;
+					childValues = childRowValues;
 					childValuesList.add(childValues);
 				}
 			}
@@ -152,10 +160,11 @@ public class DomainDefinition {
 	 * @param rowValues
 	 * @return The ID of the actual object
 	 */
-	public Object getRootId(Map<String, Map<String, Object>> rowValues) {
+	public String getRootId(Map<String, Map<String, Object>> rowValues) {
 		assert(rootTypeDef != null);
 		Map<String, Object> rootValues = rowValues.get(rootTypeDef.getTypeName());
-		return rootValues.get(rootTypeDef.getIdFieldKey());
+		// TODO check it is of type String
+		return rootValues.get(rootTypeDef.getIdFieldKey()).toString();
 	}
 	
 	public TypeDefinition getRootTypeDef() {
@@ -166,13 +175,26 @@ public class DomainDefinition {
 	 * Build a select statement from the table definitions
 	 * @param selectBuilder
 	 */
-	public SelectBuilder buildSelect(SelectBuilder selectBuilder, boolean withRefValue) {
+	public SelectBuilder buildSelect(SelectBuilder selectBuilder) {
 		assert(selectBuilder != null);
 		
 		for (TypeDefinition typeDef: typesMap.values()) {
-			typeDef.addToSelectBuilder(selectBuilder, withRefValue);
+			typeDef.addToSelectBuilder(selectBuilder);
 		}
 		return selectBuilder;
+	}
+	
+	public SelectBuilder addRefFilter(SelectBuilder selectBuilder) {
+		// Add only for the root
+		rootTypeDef.addRefFilter(selectBuilder);
+		return selectBuilder;
+	}
+	
+	public Object getRefValue(Map<String, Object> domainObject) {
+		if (StringUtils.isEmpty(rootTypeDef.getRefFieldKey())) {
+			return null;
+		}
+		return domainObject.get(rootTypeDef.getRefFieldKey());
 	}
 
 	public Map<String, Map<String, Object>> extractRow(ResultSet rs, int rowNum) throws SQLException {
@@ -184,5 +206,10 @@ public class DomainDefinition {
 		}
 		return rowValues;
 	}
-	
+
+	@Override
+	public String toString() {
+		return "DomainDefinition [typesMap=" + typesMap + ", rootTypeDef="
+				+ rootTypeDef + "]";
+	}
 }

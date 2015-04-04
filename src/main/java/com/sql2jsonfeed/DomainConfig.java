@@ -40,7 +40,7 @@ public class DomainConfig {
 	
 	public int getLimit() {
 		// TODO from config
-		return 10;
+		return 5000;
 	}
 	
 	public Object getLastReferenceValue() {
@@ -49,7 +49,7 @@ public class DomainConfig {
 
 	public String getESClusterName() {
 		// TODO from config
-		return "Olympus";
+		return "Olympus144";
 	}
 
 	public String getESIndex() {

@@ -25,20 +25,38 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.sql2jsonfeed.channel.ChannelManager;
+import com.sql2jsonfeed.config.ConfigManager;
 import com.sql2jsonfeed.definition.DomainDefinition;
 import com.sql2jsonfeed.definition.TableDefinition;
 import com.sql2jsonfeed.definition.TypeDefinition;
 import com.sql2jsonfeed.sql.SelectBuilder;
+import com.sql2jsonfeed.sql.SqlTemplates;
 
 /**
- * Hello world!
- *
+ * Application main entry point
  */
 public class App {
 
 	private static ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
 	public static void main(String[] args) throws JsonParseException,
+		JsonMappingException, IOException {
+		
+		// 1. Load and validate application config file
+		ConfigManager configManager = new ConfigManager();
+		configManager.setup();
+		
+		// 2. Process/execute each channel
+		for(ChannelManager channelManager: configManager.getChannelManagers()) {
+			channelManager.execute();
+		}
+		
+		// 3. Cleanup
+		ESClientManager.closeAll();
+	}	
+	
+	public static void main2(String[] args) throws JsonParseException,
 			JsonMappingException, IOException {
 		final String yamlFilePath = "src\\main\\resources\\order.yaml";
 
@@ -75,7 +93,7 @@ public class App {
 	private static SelectBuilder createSelectForDomain(
 			DomainDefinition domainDefinition) {
 		SelectBuilder selectBuilder = domainDefinition.buildSelect(
-				new SelectBuilder(), false);
+				new SelectBuilder(SqlTemplates.DEFAULT));
 		return selectBuilder;
 	}
 

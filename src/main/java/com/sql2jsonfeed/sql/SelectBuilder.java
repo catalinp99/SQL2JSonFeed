@@ -1,10 +1,6 @@
 package com.sql2jsonfeed.sql;
 
-import java.util.HashMap;
 import java.util.List;
-
-import org.apache.commons.lang.text.StrSubstitutor;
-
 
 /**
  * Helper for creating a select statement compatible with JDBC
@@ -12,34 +8,30 @@ import org.apache.commons.lang.text.StrSubstitutor;
  * @author Catalin
  */
 public class SelectBuilder {
-	
-	private static final String COMMA = ", ";
-	private static final String NL = "\n";
-	private static final String INDENT = "     ";
+
 	// Placeholder NAMES
+	// TODO Move them to a different place
 	public static final String P_LIMIT = "limit";
 	public static final String P_REF_VALUE = "last_ref_value";
 
-	// Default templates
-	private String templateSelectClause = "SELECT TOP (:" + P_LIMIT + ") ${select_list}";
-	private String templateFromClause = "   FROM ${from_list}";
-	private String templateWhereClause = "  WHERE ${where_list}";
-	private String templateOrderByClause = "  ORDER BY ${order_by_list}";
-	
+	// SQL templates to be used wen generating the SELECT statement
+	private SqlTemplates sqltemplates = null;
+
 	// Builders
 	private StringBuffer selectListBuilder = new StringBuffer();
 	private StringBuffer fromListBuilder = new StringBuffer();
 	private StringBuffer whereListBuilder = new StringBuffer();
 	private StringBuffer orderByBuilder = new StringBuffer();
 
-	public SelectBuilder() {
-		// TODO get templates here
+	public SelectBuilder(SqlTemplates sqltemplates) {
+		this.sqltemplates = sqltemplates;
 	}
-	
+
 	public SelectBuilder select(String columnExpression, String asName) {
 		if (selectListBuilder.length() > 0) {
-			selectListBuilder.append(NL);
-			selectListBuilder.append(INDENT + COMMA);
+			selectListBuilder.append(SqlTemplates.NL);
+			selectListBuilder.append(SqlTemplates.INDENT).append(
+					SqlTemplates.COMMA);
 		}
 		selectListBuilder.append(columnExpression);
 		if (asName != null) {
@@ -47,37 +39,44 @@ public class SelectBuilder {
 		}
 		return this;
 	}
-	
+
 	public SelectBuilder from(String tableName, String asName) {
 		if (fromListBuilder.length() > 0) {
-			fromListBuilder.append(NL);
-			fromListBuilder.append(COMMA);
+			fromListBuilder.append(SqlTemplates.NL).append(SqlTemplates.COMMA);
 		}
-		fromListBuilder.append(tableName + " AS " + asName);
+		// fromListBuilder.append(tableName + " AS " + asName);
+		fromListBuilder.append(sqltemplates.formatTableNameInFrom(tableName,
+				asName));
 		return this;
 	}
-	
-	public SelectBuilder join(String tableName, String asName, String joinString, List<String> parentKeys, List<String> childKeys) {
+
+	public SelectBuilder join(String tableName, String asName,
+			String joinString, List<String> parentKeys, List<String> childKeys) {
 		// TODO Use template
 		// TODO joinString == constant (or enum)
-		// INNER JOIN dbo.cpOrderConsignee AS cpoc WITH (NOLOCK) ON cpod.OrderConsigneeId = cpoc.OrderConsigneeId
-		assert(fromListBuilder.length() > 0);
-		assert(parentKeys.size() == childKeys.size());
-		assert(parentKeys.size() > 0);
-		fromListBuilder.append(NL);
-		fromListBuilder.append(INDENT + joinString + " " + tableName + " AS " + asName);
-		fromListBuilder.append(" ON " + parentKeys.get(0) + " = " + childKeys.get(0));
+		// INNER JOIN dbo.cpOrderConsignee AS cpoc WITH (NOLOCK) ON
+		// cpod.OrderConsigneeId = cpoc.OrderConsigneeId
+		assert (fromListBuilder.length() > 0);
+		assert (parentKeys.size() == childKeys.size());
+		assert (parentKeys.size() > 0);
+		fromListBuilder.append(SqlTemplates.NL).append(SqlTemplates.INDENT)
+				.append(joinString).append(" ");
+		fromListBuilder.append(sqltemplates.formatTableNameInFrom(tableName,
+				asName));
+		fromListBuilder.append(" ON " + parentKeys.get(0) + " = "
+				+ childKeys.get(0));
 		for (int i = 1; i < parentKeys.size(); ++i) {
-			fromListBuilder.append(" AND " + parentKeys.get(i) + " = " + childKeys.get(i));
+			fromListBuilder.append(" AND " + parentKeys.get(i) + " = "
+					+ childKeys.get(i));
 		}
-		
+
 		return this;
 	}
 
 	public SelectBuilder where(String whereCondition) {
 		if (whereListBuilder.length() > 0) {
-			whereListBuilder.append(NL);
-			whereListBuilder.append(INDENT + "AND ");
+			whereListBuilder.append(SqlTemplates.NL)
+					.append(SqlTemplates.INDENT).append("AND ");
 		}
 		whereListBuilder.append(whereCondition);
 		return this;
@@ -85,8 +84,8 @@ public class SelectBuilder {
 
 	public SelectBuilder orderBy(String orderByField, SortTypeEnum sortType) {
 		if (orderByBuilder.length() > 0) {
-			orderByBuilder.append(NL);
-			orderByBuilder.append(INDENT + COMMA);
+			orderByBuilder.append(SqlTemplates.NL).append(SqlTemplates.INDENT)
+					.append(SqlTemplates.COMMA);
 		}
 		orderByBuilder.append(orderByField);
 		if (sortType == SortTypeEnum.ASC) {
@@ -96,29 +95,18 @@ public class SelectBuilder {
 		}
 		return this;
 	}
-	
+
 	public String buildSelectQuery() {
 		// Use template commons substr
-//		private String templateSelectClause = "SELECT TOP :limit ${select_list}";
-//		private String templateFromClause = "   FROM ${from_list}\n";
-//		private String templateWhereClause = "  WHERE ${where_list}\n";
-//		private String templateOrderByClause = "  ORDER BY ${order_by_list}\n";
-		StringBuffer templateBuffer = new StringBuffer(templateSelectClause + NL + templateFromClause);
-		HashMap<String, String> valuesMap = new HashMap<String, String>(4);
-		valuesMap.put("select_list", selectListBuilder.toString());
-		valuesMap.put("from_list", fromListBuilder.toString());
-		if (whereListBuilder.length() > 0) {
-			templateBuffer.append(NL + templateWhereClause);
-			valuesMap.put("where_list", whereListBuilder.toString());
-		}
-		if (orderByBuilder.length() > 0) {
-			templateBuffer.append(NL + templateOrderByClause);
-			valuesMap.put("order_by_list", orderByBuilder.toString());
-		}
-		
-		StrSubstitutor sub = new StrSubstitutor(valuesMap);
-		String selectQuery = sub.replace(templateBuffer);
-		
-		return selectQuery;
+		// private String templateSelectClause =
+		// "SELECT TOP :limit ${select_list}";
+		// private String templateFromClause = "   FROM ${from_list}\n";
+		// private String templateWhereClause = "  WHERE ${where_list}\n";
+		// private String templateOrderByClause =
+		// "  ORDER BY ${order_by_list}\n";
+
+		return sqltemplates.formatSelect(selectListBuilder.toString(),
+				fromListBuilder.toString(), whereListBuilder.toString(),
+				orderByBuilder.toString());
 	}
 }

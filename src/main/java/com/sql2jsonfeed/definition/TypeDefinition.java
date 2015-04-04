@@ -51,6 +51,8 @@ public class TypeDefinition {
 	private String refFieldKey = null;
 	@JsonProperty("sortFields")
 	private LinkedHashMap<String, SortTypeEnum> sortFields = null;
+	@JsonProperty("whereFilters")
+	private List<String> whereFilters = null;
 	@JsonProperty("tables")
 	private LinkedHashMap<String, TableDefinition> tablesMap = null;
 	@JsonProperty("fields")
@@ -120,6 +122,14 @@ public class TypeDefinition {
 	public void setSortFields(LinkedHashMap<String, SortTypeEnum> sortFields) {
 		this.sortFields = sortFields;
 	}
+	
+	public List<String> getWhereFilters() {
+		return whereFilters;
+	}
+
+	public void setWhereFilters(List<String> whereFilters) {
+		this.whereFilters = whereFilters;
+	}
 
 	public LinkedHashMap<String, TableDefinition> getTablesMap() {
 		return tablesMap;
@@ -157,6 +167,7 @@ public class TypeDefinition {
 		}
 		
 		// TODO also validate field keys and other fields
+		assert(idFieldKey != null);
 		
 		// Init parent fields and prefix
 		int nameIndex = this.typeName.lastIndexOf(TYPE_NAME_SEP);
@@ -176,7 +187,7 @@ public class TypeDefinition {
 		return selectItemPrefix + fieldName;
 	}
 	
-	public void addToSelectBuilder(SelectBuilder selectBuilder, boolean withRefValue) {
+	public void addToSelectBuilder(SelectBuilder selectBuilder) {
 		// 1. Add tables
 		if (tablesMap != null) {
 			for (Map.Entry<String, TableDefinition> entry: tablesMap.entrySet()) {
@@ -211,10 +222,22 @@ public class TypeDefinition {
 		}
 	
 		// 3. Add where
-		if (withRefValue && StringUtils.isNotEmpty(refFieldKey)) {
+		if (whereFilters != null) {
+			for (String whereFilter: whereFilters) {
+				selectBuilder.where(whereFilter);
+			}
+		}
+	}
+	
+	/**
+	 * Add filtering by reference value (if refKey is not null)
+	 * @param selectBuilder
+	 */
+	public void addRefFilter(SelectBuilder selectBuilder) {
+		if (StringUtils.isNotEmpty(refFieldKey)) {
 			FieldDefinition refFieldDef = fieldsMap.get(refFieldKey);
 			assert(refFieldDef != null);
-			selectBuilder.where(refFieldDef.getSqlExpression() + " > :" + SelectBuilder.P_REF_VALUE);
+			selectBuilder.where(refFieldDef.getSqlExpression() + " >= :" + SelectBuilder.P_REF_VALUE);
 		}
 	}
 
