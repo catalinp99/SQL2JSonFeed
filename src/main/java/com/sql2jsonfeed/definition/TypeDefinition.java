@@ -292,4 +292,18 @@ public class TypeDefinition {
 				+ fieldsMap + ", childTypes=" + childTypes
 				+ ", selectItemPrefix=" + selectItemPrefix + "]";
 	}
+
+	public FieldDefinition getRefFieldDef() {
+		if (StringUtils.isEmpty(refFieldKey)) {
+			return null;
+		}
+		
+		return fieldsMap.get(refFieldKey);
+	}
+	
+	
+	public FieldType getRefFieldType() {
+		FieldDefinition refFieldDef = getRefFieldDef();
+		return refFieldDef == null ? null : refFieldDef.getFieldType();
+	}
 }

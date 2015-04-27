@@ -34,7 +34,10 @@ public class ConfigManager {
 	private final Path configFolder;
 
 	private String configFileName = "elasticchannel.yaml";
-
+	
+	public static final String ES_CONFIG_INDEX = "ecconfig_";
+	public static final String ES_CONFIG_TYPE = "channels_";
+	
 	/**
 	 * Main config file.
 	 */

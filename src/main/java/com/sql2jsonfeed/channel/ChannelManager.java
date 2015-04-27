@@ -1,5 +1,6 @@
 package com.sql2jsonfeed.channel;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -8,16 +9,24 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.get.GetRequestBuilder;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.indices.IndexMissingException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-import com.sql2jsonfeed.DomainRowHandler;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.sql2jsonfeed.ESClientManager;
-import com.sql2jsonfeed.config.Config;
+import com.sql2jsonfeed.config.ChannelConfigData;
 import com.sql2jsonfeed.config.ConfigManager;
 import com.sql2jsonfeed.definition.ChannelDefinition;
 import com.sql2jsonfeed.definition.DatasourceDefinition;
 import com.sql2jsonfeed.definition.DomainDefinition;
+import com.sql2jsonfeed.definition.FieldDefinition;
 import com.sql2jsonfeed.sql.SelectBuilder;
 import com.sql2jsonfeed.sql.SqlTemplates;
 
@@ -95,9 +104,21 @@ public class ChannelManager {
 				.getDatasourceDef(channelDefinition.getDatasourceName());
 		SqlTemplates sqlTemplates = configManager.getSqlTemplates(dataSourceDef
 				.getJdbcDriverClassName());
-
-		// TODO retrieve value from ElasticSearch
+		ChannelConfigData configData = lookupConfigData();
+		FieldDefinition refFieldDef = domainDefinition.getRefFieldDef();
 		Object lastReferenceValue = null;
+		boolean veryFirstTime = false;
+		if (configData == null) {
+			configData = new ChannelConfigData(this.channelName);
+			veryFirstTime = true;
+		} else {
+			lastReferenceValue = configData.getLastRefValue();
+		}
+		// TODO Compare domain and channel def???
+		configData.setChannelDef(channelDefinition);
+
+		// TODO remove - this is for test only
+		setConfigDataMapping();
 
 		// 1. Create and initialize the select builder and row handler - only
 		// first time
@@ -151,7 +172,15 @@ public class ChannelManager {
 				done = (domainRowHandler.getBatchRecordCount() < batchSize || domainRowHandler
 						.getRowCount() >= maxRecords);
 				// Store domain object into ES
-				lastReferenceValue = storeValues(domainObjectMap, batchCount, done);
+				lastReferenceValue = storeValues(domainObjectMap, batchCount,
+						done);
+				if (refFieldDef != null) {
+					configData.setLastRefValue(refFieldDef.getFieldName(),
+							lastReferenceValue);
+				}
+				configData.setLastExecutionDate(new Date());
+				persistConfigData(configData, veryFirstTime);
+				veryFirstTime = false;
 			}
 		}
 	}
@@ -166,8 +195,8 @@ public class ChannelManager {
 	 * @return
 	 */
 	private Object storeValues(
-			LinkedHashMap<String, Map<String, Object>> domainObjectMap, int batchCount,
-			boolean lastBatch) {
+			LinkedHashMap<String, Map<String, Object>> domainObjectMap,
+			int batchCount, boolean lastBatch) {
 		// If not the last batch, do not insert the last domain object
 		// as it could
 		// be incomplete. Instead make sure it will be part of the next
@@ -203,13 +232,13 @@ public class ChannelManager {
 		}
 
 		BulkResponse bulkResponse = bulkRequest.execute().actionGet();
-		
+
 		// TODO log
-		System.out.println("Channel " + channelName + ": batch "
-				+ batchCount + " took "
-				+ (System.currentTimeMillis() - startTime)
+		System.out.println("Channel " + channelName + ": batch " + batchCount
+				+ " took " + (System.currentTimeMillis() - startTime)
 				+ " ms to insert " + domainObjectMap.size()
-				+ " domain objects; last ref=" + lastRefValue + " last ID=" + lastEntry.getKey());
+				+ " domain objects; last ref=" + lastRefValue + " last ID="
+				+ lastEntry.getKey());
 		if (bulkResponse.hasFailures()) {
 			// process failures by iterating through each bulk response item
 			System.out.println(bulkResponse.buildFailureMessage());
@@ -220,4 +249,94 @@ public class ChannelManager {
 		return lastRefValue;
 	}
 
+	private static ObjectMapper mapper = new ObjectMapper();
+
+	/**
+	 * @return previously persisted channel config data.
+	 */
+	private ChannelConfigData lookupConfigData() {
+		Client esClient = ESClientManager.get(esClusterName);
+		GetRequestBuilder getRequestBuilder = esClient.prepareGet(
+				ConfigManager.ES_CONFIG_INDEX, ConfigManager.ES_CONFIG_TYPE,
+				channelName);
+
+		GetResponse getResponse = null;
+
+		try {
+			getResponse = getRequestBuilder.get();
+		} catch (IndexMissingException ime) {
+			return null; // not created yet
+		}
+		if (!getResponse.isExists()) {
+			return null;
+		}
+
+		// Convert ...
+		ChannelConfigData configData = ChannelConfigData.fromMap(getResponse
+				.getSource(), domainDefinition);
+
+		return configData;
+	}
+
+	private void setConfigDataMapping() {
+		// TODO Why is it not working??
+		// String refEsType = "null";
+		// FieldType refFieldType = domainDefinition.getRefFieldType();
+		// if (refFieldType != null) {
+		// refEsType = refFieldType.toEsType();
+		// }
+		//
+		// Client esClient = ESClientManager.get(esClusterName);
+		// try {
+		// // TODO is it necessary?
+		// esClient.admin()
+		// .indices()
+		// .create(new CreateIndexRequest(
+		// ConfigManager.ES_CONFIG_INDEX)).actionGet();
+		// } catch (IndexAlreadyExistsException iaee) {
+		// // just ignore
+		// }
+		//
+		// try {
+		// XContentBuilder xcontentBuilder = XContentFactory.jsonBuilder()
+		// .startObject().startObject(channelName)
+		// .startObject("properties").startObject("lastExecutionTime")
+		// .field("type", "date").endObject()
+		// .startObject("lastRefValue").field("type", refEsType)
+		// .endObject().endObject().endObject().endObject();
+		//
+		// PutMappingResponse putMappingResponse = esClient
+		// .admin().indices()
+		// .preparePutMapping(ConfigManager.ES_CONFIG_INDEX)
+		// .setType(channelName)
+		// .setSource(xcontentBuilder)
+		// .execute().actionGet();
+		// } catch (IOException e) {
+		// // TODO handle exception
+		// System.err.println(e);
+		// }
+	}
+
+	/**
+	 * Persist the current config data for future use.
+	 */
+	private void persistConfigData(ChannelConfigData configData,
+			boolean updateMapping) {
+		// First set the mapping
+		if (updateMapping) {
+			setConfigDataMapping();
+		}
+
+		// Then update data
+		Client esClient = ESClientManager.get(esClusterName);
+		IndexRequestBuilder indexRequestBuilder = esClient.prepareIndex(
+				ConfigManager.ES_CONFIG_INDEX, ConfigManager.ES_CONFIG_TYPE,
+				channelName);
+
+		indexRequestBuilder.setSource(configData.toMap());
+
+		IndexResponse indexResponse = indexRequestBuilder.execute().actionGet();
+		System.out.println("Config data created (updated=false): "
+				+ indexResponse.isCreated());
+	}
 }

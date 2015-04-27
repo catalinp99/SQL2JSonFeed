@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * ES channel definition to be loaded from a config file
  * 
- * @author Catalin
+ * @author Take Moa
  */
 public class ChannelDefinition {
 	

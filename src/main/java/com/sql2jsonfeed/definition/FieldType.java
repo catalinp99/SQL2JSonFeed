@@ -1,5 +1,7 @@
 package com.sql2jsonfeed.definition;
 
+import org.elasticsearch.index.mapper.core.FloatFieldMapper;
+
 public enum FieldType {
 
 	FLOAT (1),
@@ -20,5 +22,26 @@ public enum FieldType {
 
 	public int getValue() {
 		return value;
+	}
+	
+	public String toEsType() {
+		// TODO constants
+		switch (this) {
+		case FLOAT:
+			return "float";
+		case DOUBLE:
+			return "double";
+		case SHORT:
+		case INTEGER:
+			return "integer";
+		case LONG:
+			return "long";
+		case BOOLEAN:
+			return "boolean";
+		case DATE:
+		case DATETIME:
+			return "date";
+		}
+		return "null";
 	}
 }

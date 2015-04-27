@@ -31,7 +31,7 @@ sqlTemplates:
 # Channels definition
 channels:
   # Channel name/ID
-  ordersFromCPEDB:
+  ordersFromDB:
     # ES cluster to be used for this channel.
     # clusterName: Olympus144
     # The target ES Index
@@ -43,6 +43,6 @@ channels:
     # Optional, if not defined it is <domain>.yaml
     domainDefinitionFile: order.yaml
     # Max records in one run - optional, defaults to 1,000,000
-    maxRecords: 300
+    maxRecords: 10
     # Batch size - default is the global value
-    batchSize: 100
+    batchSize: 20

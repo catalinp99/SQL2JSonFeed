@@ -19,7 +19,7 @@ public class DomainDefinition {
 
 	private LinkedHashMap<String, TypeDefinition> typesMap = null;
 	private TypeDefinition rootTypeDef = null;
-
+	
 	public DomainDefinition(LinkedHashMap<String, TypeDefinition> typesMap) {
 		this.typesMap = typesMap;
 		
@@ -188,6 +188,16 @@ public class DomainDefinition {
 		// Add only for the root
 		rootTypeDef.addRefFilter(selectBuilder);
 		return selectBuilder;
+	}
+
+	public FieldDefinition getRefFieldDef() {
+		// TODO Auto-generated method stub
+		return rootTypeDef.getRefFieldDef();
+	}
+	
+	public FieldType getRefFieldType() {
+		
+		return rootTypeDef.getRefFieldType();
 	}
 	
 	public Object getRefValue(Map<String, Object> domainObject) {
