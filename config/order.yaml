@@ -4,7 +4,7 @@
 order:
   # the field that uniquely identifies the domain / type
   idField: orderNumber
-  # reference field - for sorting and detecting new and updated values
+  # reference field - for sorting new values
   refField: localPlacedDate
   # Additional sort fields
   sortFields:
@@ -27,8 +27,17 @@ order:
         childColumns:
         - "cpOrderDetails.OrderDetailsId"
   # Additional where filters
-#  whereFilters:
+  whereFilters:
 #    - "cpOrder.Status = 'PLACED'"
+    - "cpOrder.CpPlacedDate > '2015-03-01 00:00:00.000'"
+# Multiple update scenarios
+#  update:
+#    cancelled:
+#      refField: cancelDate
+#      whereFilter: "cpOrder.Status='CANCELLED' AND cpOrder.CancelDate > ${max:cancelDate:datetime}"
+#    confirmed:
+#      refField: localConfirmDate
+#      whereFilter: "cpOrder.Status='CONFIRMED' AND cpOrder.cpConfirmDate > ${max:localConfirmDate:datetime}"
   # List of fields for this type
   fields:
     orderNumber:
