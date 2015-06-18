@@ -7,7 +7,7 @@ runIntervalMins: 10
 # How many records to be processed in one batch. Default value is 5000.
 batchSize: 5000
 # ES cluster name - global. It can also be defined at channel level.
-clusterName: Olympus144
+clusterName: Olympus152
 
 # Datasources definition
 datasources:
@@ -43,6 +43,6 @@ channels:
     # Optional, if not defined it is <domain>.yaml
     domainDefinitionFile: order.yaml
     # Max records in one run - optional, defaults to 1,000,000
-    maxRecords: 10
+    maxRecords: 40
     # Batch size - default is the global value
     batchSize: 20

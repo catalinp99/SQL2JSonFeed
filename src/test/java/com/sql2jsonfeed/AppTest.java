@@ -4,6 +4,9 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import java.util.Date;
+import java.util.TimeZone;
+
 /**
  * Unit test for simple App.
  */
@@ -34,5 +37,8 @@ public class AppTest
     public void testApp()
     {
         assertTrue( true );
+        System.out.println(TimeZone.getDefault());
+        System.out.println(TimeZone.getDefault().getOffset(System.currentTimeMillis()));
+        System.out.println(new Date());
     }
 }

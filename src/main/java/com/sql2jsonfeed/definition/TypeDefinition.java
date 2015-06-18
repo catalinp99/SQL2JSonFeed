@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+import com.sql2jsonfeed.util.Conversions;
 import org.apache.commons.lang.StringUtils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -228,18 +229,6 @@ public class TypeDefinition {
 			}
 		}
 	}
-	
-	/**
-	 * Add filtering by reference value (if refKey is not null)
-	 * @param selectBuilder
-	 */
-	public void addRefFilter(SelectBuilder selectBuilder) {
-		if (StringUtils.isNotEmpty(refFieldKey)) {
-			FieldDefinition refFieldDef = fieldsMap.get(refFieldKey);
-			assert(refFieldDef != null);
-			selectBuilder.where(refFieldDef.getSqlExpression() + " >= :" + SelectBuilder.P_REF_VALUE);
-		}
-	}
 
 	public Map<String, Object> extractRow(ResultSet rs, int rowNum) throws SQLException {
 		if (getFieldsMap() == null) {
@@ -248,39 +237,37 @@ public class TypeDefinition {
 		
 		Map<String, Object> typeRowValues = new LinkedHashMap<String, Object>();
 		for (FieldDefinition fieldDef: getFieldsMap().values()) {
-			typeRowValues.put(fieldDef.getFieldName(), getFieldValue(rs, fieldDef));
+			String columnLabel = fieldAsSelectItem(fieldDef.getFieldName());
+            Object value = Conversions.sqlToESValue(rs, fieldDef, columnLabel, null);
+			typeRowValues.put(fieldDef.getFieldName(), value);
 		}
 		return typeRowValues;
 	}
-	
-	// TODO Separate helper class
-	private Object getFieldValue(ResultSet rs, FieldDefinition fieldDef) throws SQLException {
-		// TODO More efficient - the field aliases were already computed previously
-		String selectItemName = fieldAsSelectItem(fieldDef.getFieldName());
-		switch (fieldDef.getFieldType()) {
-		case STRING:
-			return rs.getString(selectItemName);
-		case DATE:
-			return (java.util.Date) rs.getDate(selectItemName);
-		case DATETIME:
-			// TODO - must be the DB SERVER time zone
-			return (java.util.Date) rs.getTimestamp(selectItemName,
-					Calendar.getInstance(TimeZone.getTimeZone("UTC")));
-		case FLOAT:
-			return rs.getFloat(selectItemName);
-		case DOUBLE:
-			return rs.getDouble(selectItemName);
-		case INTEGER:
-			return rs.getInt(selectItemName);
-		case LONG:
-			return rs.getLong(selectItemName);
-		case SHORT:
-			return rs.getShort(selectItemName);
-		case BOOLEAN:
-			return rs.getBoolean(selectItemName);
+
+	public FieldDefinition getRefFieldDef() {
+		if (StringUtils.isEmpty(refFieldKey)) {
+			return null;
 		}
-		return null;
+		return fieldsMap.get(refFieldKey);
 	}
+
+	public FieldType getRefFieldType() {
+		FieldDefinition refFieldDef = getRefFieldDef();
+		return refFieldDef == null ? null : refFieldDef.getFieldType();
+	}
+
+    /**
+     * Add filtering by reference value (if refKey is not null)
+     * @param selectBuilder
+     */
+    public void addRefFilter(SelectBuilder selectBuilder) {
+        if (StringUtils.isNotEmpty(refFieldKey)) {
+            FieldDefinition refFieldDef = fieldsMap.get(refFieldKey);
+            assert(refFieldDef != null);
+            selectBuilder.where(refFieldDef.getSqlExpression() + " >= :" + SelectBuilder.P_REF_VALUE);
+        }
+    }
+
 
 	@Override
 	public String toString() {
@@ -291,19 +278,5 @@ public class TypeDefinition {
 				+ sortFields + ", tablesMap=" + tablesMap + ", fieldsMap="
 				+ fieldsMap + ", childTypes=" + childTypes
 				+ ", selectItemPrefix=" + selectItemPrefix + "]";
-	}
-
-	public FieldDefinition getRefFieldDef() {
-		if (StringUtils.isEmpty(refFieldKey)) {
-			return null;
-		}
-		
-		return fieldsMap.get(refFieldKey);
-	}
-	
-	
-	public FieldType getRefFieldType() {
-		FieldDefinition refFieldDef = getRefFieldDef();
-		return refFieldDef == null ? null : refFieldDef.getFieldType();
 	}
 }

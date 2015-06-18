@@ -85,6 +85,12 @@ public class Config {
 
 	public void setChannels(LinkedHashMap<String, ChannelDefinition> channels) {
 		this.channels = channels;
+		// Update channel names also
+        if (channels != null) {
+            for(Map.Entry<String, ChannelDefinition> channelEntry: channels.entrySet()) {
+                channelEntry.getValue().setName(channelEntry.getKey());
+            }
+        }
 	}
 	
 	public void validate() throws ConfigException {

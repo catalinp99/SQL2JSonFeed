@@ -6,6 +6,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.sql2jsonfeed.definition.*;
+import com.sql2jsonfeed.util.Conversions;
 import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -13,8 +15,14 @@ import org.elasticsearch.action.get.GetRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.indices.IndexMissingException;
+import org.elasticsearch.search.aggregations.Aggregation;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.metrics.max.Max;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,10 +31,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.sql2jsonfeed.ESClientManager;
 import com.sql2jsonfeed.config.ChannelConfigData;
 import com.sql2jsonfeed.config.ConfigManager;
-import com.sql2jsonfeed.definition.ChannelDefinition;
-import com.sql2jsonfeed.definition.DatasourceDefinition;
-import com.sql2jsonfeed.definition.DomainDefinition;
-import com.sql2jsonfeed.definition.FieldDefinition;
 import com.sql2jsonfeed.sql.SelectBuilder;
 import com.sql2jsonfeed.sql.SqlTemplates;
 
@@ -45,6 +49,9 @@ public class ChannelManager {
 	private int batchSize;
 	private int maxRecords;
 	private String esClusterName = null;
+
+    // Automatic field to be added to any domain object
+    public static final String FIELD_CHANNEL = "channel_";
 
 	public ChannelManager(String channelName, ConfigManager configManager,
 			ChannelDefinition channelDefinition,
@@ -100,25 +107,30 @@ public class ChannelManager {
 	public void execute() {
 
 		// Init variables
+		// JDBC DATA SOURCE
 		DatasourceDefinition dataSourceDef = configManager
 				.getDatasourceDef(channelDefinition.getDatasourceName());
+		// SQL TEMPLATES (per jdbc driver)
 		SqlTemplates sqlTemplates = configManager.getSqlTemplates(dataSourceDef
 				.getJdbcDriverClassName());
+		// Previously persisted config data
 		ChannelConfigData configData = lookupConfigData();
+		//
 		FieldDefinition refFieldDef = domainDefinition.getRefFieldDef();
-		Object lastReferenceValue = null;
+        // Retrieve lastReferenceValue from ES index directly
+        Object lastReferenceValue = null;
 		boolean veryFirstTime = false;
 		if (configData == null) {
 			configData = new ChannelConfigData(this.channelName);
 			veryFirstTime = true;
 		} else {
-			lastReferenceValue = configData.getLastRefValue();
+			lastReferenceValue = getChannelMaxReferenceValue();
 		}
 		// TODO Compare domain and channel def???
 		configData.setChannelDef(channelDefinition);
 
 		// TODO remove - this is for test only
-		setConfigDataMapping();
+		// setConfigDataMapping();
 
 		// 1. Create and initialize the select builder and row handler - only
 		// first time
@@ -143,7 +155,7 @@ public class ChannelManager {
 			// TODO log
 			long startTime = System.currentTimeMillis();
 			System.out.println("Channel " + channelName + ": start batch "
-					+ batchCount);
+					+ batchCount + " from " + lastReferenceValue);
 			// a. add conditional placeholder values
 			if (lastReferenceValue != null) {
 				jdbcParamsMap
@@ -151,8 +163,10 @@ public class ChannelManager {
 			}
 			// b. Execute the actual query
 			domainRowHandler.reset();
-			jdbcTemplate.query(selectBuilder.buildSelectQuery(), jdbcParamsMap,
-					domainRowHandler);
+            String query = selectBuilder.buildSelectQuery();
+            System.out.println(query);
+            System.out.println(jdbcParamsMap);
+			jdbcTemplate.query(query, jdbcParamsMap, domainRowHandler);
 			// Add reference filter to SQL in preparation for next run
 			if (lastReferenceValue == null) {
 				domainDefinition.addRefFilter(selectBuilder);
@@ -185,7 +199,55 @@ public class ChannelManager {
 		}
 	}
 
-	/**
+    /**
+     * Lookup in the existing index the maximum value of the reference field
+     * @return max value or null if there is no reference field
+     */
+    private Object getChannelMaxReferenceValue() {
+        FieldDefinition refFieldDef = domainDefinition.getRefFieldDef();
+        if (refFieldDef == null) {
+            // No reference field, return null
+            return null;
+        }
+        Client esClient = ESClientManager.get(esClusterName);
+        // Create search request
+        final String maxRef = "maxRef";
+
+		SearchRequestBuilder searchRequestBuilder = esClient.prepareSearch(/*index*/ channelDefinition.getEsIndex());
+		searchRequestBuilder.setTypes(channelDefinition.getEsType());
+		// REPLACE WITH TERM
+		searchRequestBuilder.setQuery(QueryBuilders.matchQuery(ChannelManager.FIELD_CHANNEL, channelDefinition.getName()));
+		searchRequestBuilder.addAggregation(AggregationBuilders.max(maxRef).field(
+				refFieldDef.getFieldName()));
+		searchRequestBuilder.setSize(0);
+
+		SearchResponse searchResponse = null;
+
+		try {
+			searchResponse = searchRequestBuilder.execute().actionGet();
+		} catch (IndexMissingException ime) {
+			return null; // not created yet
+		} catch (RuntimeException re) {
+			// TODO remove
+			System.err.println(re);
+			throw re;
+		}
+
+		System.out.println("Total records before this batch:" + searchResponse.getHits().totalHits());
+
+		if (searchResponse.getHits().totalHits() == 0) {
+			return null; // first time
+		}
+		Max maxAgg = searchResponse.getAggregations().get(maxRef);
+        Object maxValue = Conversions.fromEsValue(maxAgg.getValue(), refFieldDef.getFieldType(), null);
+
+		// How to cast to a date
+        System.out.println("Max ref value before this batch:" + maxAgg.getValue() + " ---> " + maxValue);
+
+        return maxValue;
+    }
+
+    /**
 	 * Persist values into the ES cluster
 	 * 
 	 * @param domainObjectMap
@@ -207,6 +269,8 @@ public class ChannelManager {
 				.entrySet().iterator();
 		while (it.hasNext()) {
 			lastEntry = it.next();
+            // Set the unconditional 'channel' field
+            lastEntry.getValue().put(FIELD_CHANNEL, channelName);
 		}
 		lastRefValue = domainDefinition.getRefValue(lastEntry.getValue());
 
@@ -244,7 +308,7 @@ public class ChannelManager {
 			System.out.println(bulkResponse.buildFailureMessage());
 		}
 
-		// Update the E Channel values (in ES)
+		// Update the ES Channel values (in ES)
 
 		return lastRefValue;
 	}

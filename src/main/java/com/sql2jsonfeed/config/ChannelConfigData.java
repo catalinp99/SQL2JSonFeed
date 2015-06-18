@@ -4,8 +4,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.elasticsearch.common.netty.channel.ChannelConfig;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,7 +52,7 @@ public class ChannelConfigData {
         // Change the types inside the map before conversion, as date fields are
         // returned by ES as String
         Object lastExecutionDate = sourceMap.get("lastExecutionDate");
-        sourceMap.put("lastExecutionDate", Conversions.toFieldValue(
+        sourceMap.put("lastExecutionDate", Conversions.fromEsValue(
                 lastExecutionDate, FieldType.DATETIME, null));
 
         // TODO convert last reference
@@ -63,7 +61,7 @@ public class ChannelConfigData {
         if (refFieldType != null) {
             Object refValue = configData.getLastRefValue();
             if (refValue != null) {
-                configData.updateLastRefValue(Conversions.toFieldValue(refValue, refFieldType, null));
+                configData.updateLastRefValue(Conversions.fromEsValue(refValue, refFieldType, null));
             }
         }
 
