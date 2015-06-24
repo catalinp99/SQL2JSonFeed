@@ -64,6 +64,8 @@ public class ConfigManager {
 		if (System.getProperty("ec.filename.config") != null) {
 			configFileName = System.getProperty("ec.filename.config");
 		}
+
+        Registry.setConfigManager(this);
 	}
 
 	private static ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -224,10 +226,6 @@ public class ConfigManager {
 
 	public int getDefaultBatchSize() {
 		return config.getBatchSize();
-	}
-
-	public String getDefaultEsClusterName() {
-		return config.getClusterName();
 	}
 
 	@Override

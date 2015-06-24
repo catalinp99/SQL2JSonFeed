@@ -2,9 +2,11 @@ package com.sql2jsonfeed.util;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
 import com.sql2jsonfeed.definition.FieldDefinition;
@@ -47,14 +49,16 @@ public class Conversions {
 				}
 			} else if (esClass == Long.class) {
 				// Create one automatically - Use UTC (as dates are coming from ES as UTC)
-                DateTime dateTimeUtc = new DateTime((Long)esValue, DateTimeZone.UTC );
-                Date date = dateTimeUtc.toDate();
-                return date;
+                Timestamp dateTimeUtc = new Timestamp(((Long)esValue).longValue());
+                return dateTimeUtc;
             } else if (esClass == Double.class) {
-                // Create one automatically - Use UTC (as dates are coming from ES as UTC)
-                DateTime dateTimeUtc = new DateTime(((Double)esValue).longValue(), DateTimeZone.UTC );
-                Date date = dateTimeUtc.toDate();
-                return date;
+                // Dates are coming as UTC
+                Timestamp dateTimeUtc = new Timestamp(((Double)esValue).longValue());
+                return dateTimeUtc;
+//                // Aggregate values are coming as Double from ES.
+//                DateTime dateTimeUtc = new DateTime(((Double)esValue).longValue(), DateTimeZone.UTC );
+//                Date date = dateTimeUtc.toDate();
+//                return date;
 			}
 		// TODO implement the other types also
 //        if (refFieldDef.getFieldType() == FieldType.DATE) {
@@ -114,5 +118,34 @@ public class Conversions {
         }
         return null;
 
+    };
+
+    /**
+     * Convert a local field (usually a timestamp) from a local format (e.g. local time zone) to the db format (e.g. DB time zone)
+     * @param fieldDef
+     * @param dbTimeZone
+     * @return
+     */
+    public static Object localToSqlValue(Object value, FieldDefinition fieldDef, TimeZone dbTimeZone) {
+        // Currently only applies to timestamps if the time zone is not empty
+        if (value == null || fieldDef.getFieldType() != FieldType.DATETIME || dbTimeZone == null) {
+            return value;
+        }
+        Class<?> valueClass = value.getClass();
+
+        if (Date.class.isAssignableFrom(valueClass)) {
+            // TODO is there any way to use Gregorian???
+            // Convert a value from local timezone to the db time zone
+            DateTime dateTime = new DateTime((Date) value, DateTimeZone.forTimeZone(dbTimeZone));
+            dateTime = dateTime.withZoneRetainFields(DateTimeZone.getDefault());
+
+            // Convert from one timezone to another
+            if (valueClass == Timestamp.class) {
+                return new Timestamp(dateTime.getMillis());
+            }
+            return dateTime.toDate();
+        }
+
+        return value;
     };
 }

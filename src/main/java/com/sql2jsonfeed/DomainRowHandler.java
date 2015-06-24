@@ -52,7 +52,7 @@ public class DomainRowHandler extends RowCountCallbackHandler {
 
 		// 1. Extract values -> each type definition has to extract each own values, as HashMap;
 		// including the ID
-		Map<String, Map<String, Object>> rowValues = domainDefinition.extractRow(rs, rowNum);
+		Map<String, Map<String, Object>> rowValues = domainDefinition.extractRow(rs, rowNum, null);
 //		System.out.println(rowNum + ": " + rowValues);
 		
 		// 2. Merge values into the existing map

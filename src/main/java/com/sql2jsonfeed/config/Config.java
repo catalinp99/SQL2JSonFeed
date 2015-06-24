@@ -21,9 +21,10 @@ public class Config {
 	private int runIntervalMins = 30;
 	private int batchSize = 5000;
 	
-	// ES cluster name
-	private String clusterName = null;
-	
+	// ES cluster custom settings
+    @JsonProperty("esClusters")
+	private Map<String, Map<String, String>> esClusterSettingsMap;
+
 	// Datasources map: name to Datasource
 	@JsonProperty("datasources")
 	private Map<String, DatasourceDefinition> datasourceMap;
@@ -37,6 +38,8 @@ public class Config {
 
 	public Config() {
 		super();
+
+        Registry.setConfig(this);
 	}
 
 	public int getRunIntervalMins() {
@@ -55,13 +58,20 @@ public class Config {
 		this.batchSize = batchSize;
 	}
 
-	public String getClusterName() {
-		return clusterName;
-	}
+    public Map<String, String> getEsClusterSettings(String clusterName) {
+        if (esClusterSettingsMap == null) {
+            return null;
+        }
+        return esClusterSettingsMap.get(clusterName);
+    }
 
-	public void setClusterName(String clusterName) {
-		this.clusterName = clusterName;
-	}
+    public Map<String, Map<String, String>> getEsClusterSettingsMap() {
+        return esClusterSettingsMap;
+    }
+
+    public void setEsClusterSettingsMap(Map<String, Map<String, String>> esClusterSettingsMap) {
+        this.esClusterSettingsMap = esClusterSettingsMap;
+    }
 
 	public Map<String, DatasourceDefinition> getDatasourceMap() {
 		return datasourceMap;
@@ -95,7 +105,7 @@ public class Config {
 	
 	public void validate() throws ConfigException {
 		if (channels == null || channels.isEmpty()) {
-			throw new ConfigException("No channles defined in config");
+			throw new ConfigException("No channels defined in config");
 		}
 		
 		// TODO more validation
@@ -106,7 +116,7 @@ public class Config {
 	@Override
 	public String toString() {
 		return "Config [runIntervalMins=" + runIntervalMins + ", batchSize="
-				+ batchSize + ", clusterName=" + clusterName
+				+ batchSize + ", esClusterSettingsMap=" + esClusterSettingsMap
 				+ ", datasourceMap=" + datasourceMap + ", sqlTemplatesMap="
 				+ sqlTemplatesMap + ", channels=" + channels + "]";
 	}

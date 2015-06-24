@@ -1,6 +1,9 @@
 package com.sql2jsonfeed.definition;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.TimeZone;
 
 /**
  * ES channel definition to be loaded from a config file
@@ -13,6 +16,7 @@ public class ChannelDefinition {
 	private String name = null;
 
 	// The target ES cluster name
+	@JsonProperty("esCluster")
 	private String esClusterName = null;
 	// The target ES index
 	private String esIndex = null;
@@ -20,6 +24,8 @@ public class ChannelDefinition {
 	private String esType = null;
 	@JsonProperty("datasource")
 	private String datasourceName = null;
+    @JsonProperty("dbTimeZoneId")
+	private String dbTimeZoneId = null;
 
 	// The domain definition file
 	private String domainDefinitionFile = null; // same as ES type
@@ -68,6 +74,23 @@ public class ChannelDefinition {
 		this.esType = esType;
 	}
 
+	public String getDbTimeZoneId() {
+		return dbTimeZoneId;
+	}
+
+	public void setDbTimeZoneId(String dbTimeZoneId) {
+		this.dbTimeZoneId = dbTimeZoneId;
+	}
+
+    @JsonIgnore
+    public TimeZone getDbTimeZone() {
+        if (dbTimeZoneId == null) {
+            return null;
+        }
+
+        return TimeZone.getTimeZone(dbTimeZoneId);
+    }
+
 	public String getDomainDefinitionFile() {
 		return domainDefinitionFile;
 	}
@@ -102,11 +125,16 @@ public class ChannelDefinition {
 
 	@Override
 	public String toString() {
-		return "ChannelDefinition [name=" + name + ", esClusterName="
-				+ esClusterName + ", esIndex=" + esIndex + ", esType=" + esType
-				+ ", datasourceName=" + datasourceName
-				+ ", domainDefinitionFile=" + domainDefinitionFile
-				+ ", maxRecords=" + maxRecords + ", batchSize=" + batchSize
-				+ "]";
+		return "ChannelDefinition{" +
+				"name='" + name + '\'' +
+				", esClusterName='" + esClusterName + '\'' +
+				", esIndex='" + esIndex + '\'' +
+				", esType='" + esType + '\'' +
+				", datasourceName='" + datasourceName + '\'' +
+				", dbTimeZoneId='" + dbTimeZoneId + '\'' +
+				", domainDefinitionFile='" + domainDefinitionFile + '\'' +
+				", maxRecords=" + maxRecords +
+				", batchSize=" + batchSize +
+				'}';
 	}
 }

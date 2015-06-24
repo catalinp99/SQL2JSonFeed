@@ -2,11 +2,7 @@ package com.sql2jsonfeed.definition;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.springframework.util.StringUtils;
 
@@ -207,11 +203,11 @@ public class DomainDefinition {
 		return domainObject.get(rootTypeDef.getRefFieldKey());
 	}
 
-	public Map<String, Map<String, Object>> extractRow(ResultSet rs, int rowNum) throws SQLException {
+	public Map<String, Map<String, Object>> extractRow(ResultSet rs, int rowNum, TimeZone dbServerTimeZone) throws SQLException {
 		HashMap<String, Map<String, Object>> rowValues = new HashMap<String, Map<String, Object>>();
 		
 		for (Map.Entry<String, TypeDefinition> entry: typesMap.entrySet()) {
-			Map<String, Object> typeRowValues = entry.getValue().extractRow(rs, rowNum);
+			Map<String, Object> typeRowValues = entry.getValue().extractRow(rs, rowNum, dbServerTimeZone);
 			rowValues.put(entry.getKey(), typeRowValues);
 		}
 		return rowValues;

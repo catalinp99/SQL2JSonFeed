@@ -230,7 +230,7 @@ public class TypeDefinition {
 		}
 	}
 
-	public Map<String, Object> extractRow(ResultSet rs, int rowNum) throws SQLException {
+	public Map<String, Object> extractRow(ResultSet rs, int rowNum, TimeZone dbServerTimeZone) throws SQLException {
 		if (getFieldsMap() == null) {
 			return null;
 		}
@@ -238,7 +238,7 @@ public class TypeDefinition {
 		Map<String, Object> typeRowValues = new LinkedHashMap<String, Object>();
 		for (FieldDefinition fieldDef: getFieldsMap().values()) {
 			String columnLabel = fieldAsSelectItem(fieldDef.getFieldName());
-            Object value = Conversions.sqlToESValue(rs, fieldDef, columnLabel, null);
+            Object value = Conversions.sqlToESValue(rs, fieldDef, columnLabel, dbServerTimeZone);
 			typeRowValues.put(fieldDef.getFieldName(), value);
 		}
 		return typeRowValues;

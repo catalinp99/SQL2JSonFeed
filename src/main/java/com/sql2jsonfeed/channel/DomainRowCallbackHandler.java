@@ -4,7 +4,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
+import com.sql2jsonfeed.definition.ChannelDefinition;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.jdbc.core.RowCountCallbackHandler;
 
 import com.sql2jsonfeed.definition.DomainDefinition;
@@ -12,7 +15,7 @@ import com.sql2jsonfeed.definition.DomainDefinition;
 public class DomainRowCallbackHandler extends RowCountCallbackHandler {
 
 	private ChannelManager channelManager = null;
-	
+
 	// Batch record count
 	private int batchRecordCount = 0;
 	
@@ -50,7 +53,7 @@ public class DomainRowCallbackHandler extends RowCountCallbackHandler {
 		
 		// 1. Extract values -> each type definition has to extract each own values, as HashMap;
 		// including the ID
-		Map<String, Map<String, Object>> rowValues = domainDefinition.extractRow(rs, rowNum);
+		Map<String, Map<String, Object>> rowValues = domainDefinition.extractRow(rs, rowNum, channelManager.getChannelDefinition().getDbTimeZone());
 //		System.out.println(rowNum + ": " + rowValues);
 		
 		// 2. Merge values into the existing map

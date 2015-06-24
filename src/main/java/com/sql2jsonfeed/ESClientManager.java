@@ -1,7 +1,9 @@
 package com.sql2jsonfeed;
 
 import java.util.HashMap;
+import java.util.Map;
 
+import com.sql2jsonfeed.config.Registry;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.node.Node;
@@ -54,15 +56,20 @@ public class ESClientManager {
 
 	private static Node createClientNode(String esClusterName) {
 		// TODO can we set a specific name???
-//		Node node = NodeBuilder.nodeBuilder().client(true)
-//				.clusterName(esClusterName).node();
 
-        // TODO to config file
-		Node node = NodeBuilder.nodeBuilder().client(true).settings(ImmutableSettings.builder()
-				.put("cluster.name", esClusterName)
-				.put("discovery.zen.ping.multicast.enabled", false)
-				.putArray("discovery.zen.ping.unicast.hosts", "localhost:9300", "localhost:9301"))
-				.node();
+        // Get cluster settings from config
+        Map<String, String> esClusterSettings = Registry.getConfig().getEsClusterSettings(esClusterName);
+        // Create settings
+        ImmutableSettings.Builder builder = ImmutableSettings.builder();
+        builder.put("cluster.name", esClusterName);
+//        builder.put("discovery.zen.ping.multicast.enabled", "false");
+//        builder.putArray("discovery.zen.ping.unicast.hosts", "localhost:9300", "localhost:9301");
+        if (esClusterSettings != null) {
+            builder.put(esClusterSettings);
+        }
+
+        // And the node
+        Node node = NodeBuilder.nodeBuilder().client(true).settings(builder).node();
 
 		return node;
 	}
