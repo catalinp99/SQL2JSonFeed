@@ -15,6 +15,10 @@ public class DomainDefinition {
 
 	private LinkedHashMap<String, TypeDefinition> typesMap = null;
 	private TypeDefinition rootTypeDef = null;
+
+
+    // Computed field
+    HashMap<String, Object> allFieldsMappings = null;
 	
 	public DomainDefinition(LinkedHashMap<String, TypeDefinition> typesMap) {
 		this.typesMap = typesMap;
@@ -54,9 +58,20 @@ public class DomainDefinition {
 		}
 		
 		// TODO check main type required fields
+
+		// Collect field mappings
+        allFieldsMappings = new HashMap<String, Object>();
+        rootTypeDef.addToFieldsMappings(allFieldsMappings);
+
+        if (allFieldsMappings.isEmpty()) {
+            allFieldsMappings = null; // for easier comparison
+        }
 	}
-	
-	
+
+    public Map<String, Object> getAllFieldsMappings() {
+        return allFieldsMappings;
+    }
+
 	/**
 	 * Merge the values from a single row into the main object (if any) or create a new object
 	 * @param rootValues

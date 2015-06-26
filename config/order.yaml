@@ -3,7 +3,7 @@
 # Order. This is the main object.
 order:
   # the field that uniquely identifies the domain / type
-  idField: orderNumber
+  idField: commodityId
   # reference field - for sorting new values
   refField: localPlacedDate
   # Additional sort fields

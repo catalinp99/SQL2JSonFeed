@@ -9,6 +9,7 @@ import java.util.Map;
 import com.sql2jsonfeed.definition.*;
 import com.sql2jsonfeed.util.Conversions;
 import org.apache.commons.lang.StringUtils;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetRequestBuilder;
@@ -92,7 +93,7 @@ public class ChannelManager {
     }
 
     /**
-     * Does the actual processing, load from database and adding to
+     * Does the actual processing, load from database, adding to
      * ElasticSearch.
      */
     public void execute() {
@@ -106,7 +107,7 @@ public class ChannelManager {
                 .getJdbcDriverClassName());
         // Previously persisted config data
         ChannelConfigData configData = lookupConfigData();
-        //
+        // Reference field
         FieldDefinition refFieldDef = domainDefinition.getRefFieldDef();
         // Retrieve lastReferenceValue from ES index directly
         Object lastReferenceValue = null;
@@ -122,6 +123,9 @@ public class ChannelManager {
 
         // TODO remove - this is for test only
         // setConfigDataMapping();
+
+        // Apply custom field mappings (if any)
+        setCustomFieldsMappings();
 
         // 1. Create and initialize the select builder and row handler - only
         // first time
@@ -190,6 +194,23 @@ public class ChannelManager {
                 veryFirstTime = false;
             }
         }
+    }
+
+    /**
+     * Add the custom ES fields mappings, such as not_analyzed. It does succeed only for fields that do not have any existing (default or not) mappings
+     */
+    private void setCustomFieldsMappings() {
+        if (domainDefinition.getAllFieldsMappings() == null) {
+            return; // nothing to do
+        }
+
+        PutMappingRequest putMappingRequest = new PutMappingRequest(/*index*/ channelDefinition.getEsIndex());
+        putMappingRequest.type(channelDefinition.getEsType());
+        putMappingRequest.source(domainDefinition.getAllFieldsMappings());
+        putMappingRequest.ignoreConflicts(true);
+
+        Client esClient = ESClientManager.get(esClusterName);
+        esClient.admin().indices().putMapping(putMappingRequest);
     }
 
     /**

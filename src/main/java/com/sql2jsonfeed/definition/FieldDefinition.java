@@ -3,22 +3,28 @@ package com.sql2jsonfeed.definition;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Map;
+
 public class FieldDefinition {
 
 /*
  * 
-    consigneeNumber:
-      dbField: "ConsigneeNumber"
-      type: "string"
+    hsCode:
+      sqlExpression: "cat.hscode"
+      type: STRING
+      mappings:
+        index: "not_analyzed"
+        store: "yes"
  * 
  */
 	@JsonIgnore
 	private String fieldName = null;
 
-	// Either one must be not null
 	private String sqlExpression = null;
 	@JsonProperty("type")
 	private FieldType fieldType = null;
+	// ES Style mappings
+	private Map<String, String> mappings = null;
 
 	public FieldDefinition() {
 		super();
@@ -48,9 +54,21 @@ public class FieldDefinition {
 		this.fieldType = fieldType;
 	}
 
+	public Map<String, String> getMappings() {
+		return mappings;
+	}
+
+	public void setMappings(Map<String, String> mappings) {
+		this.mappings = mappings;
+	}
+
 	@Override
 	public String toString() {
-		return "FieldDefinition [fieldName=" + fieldName + ", sqlExpression="
-				+ sqlExpression + ", fieldType=" + fieldType + "]";
+		return "FieldDefinition{" +
+				"fieldName='" + fieldName + '\'' +
+				", sqlExpression='" + sqlExpression + '\'' +
+				", fieldType=" + fieldType +
+				", mappings=" + mappings +
+				'}';
 	}
 }

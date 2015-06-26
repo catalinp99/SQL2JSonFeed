@@ -21,9 +21,16 @@ datasources:
     # Username if not included in the URL
     # username: xbecuser
     # password: xbecuser
+  pimsDS:
+    driverClassName: com.mysql.jdbc.Driver
+    url: "jdbc:mysql://192.168.246.14:3306/PIMS"
+    # Username if not included in the URL
+    username: pimsapp
+    password: pimsapp
 
 # SQL Templates, per each driver type
 sqlTemplates:
+  # SQL Server	
   com.microsoft.sqlserver.jdbc.SQLServerDriver:
     templateSelectClause: "SELECT TOP (:limit) ${select_list}"
     # templateFromClause: "  FROM ${from_list}"
@@ -31,21 +38,47 @@ sqlTemplates:
     # templateOrderByClause: "  ORDER BY ${order_by_list}"
     templateTableInFromClause: "${table_name} AS ${alias}"
     templateColumnInSelectList: "${column_name} AS ${alias}"
+  # MySQL
+  com.mysql.jdbc.Driver:
+    templateSelectClause: "SELECT ${select_list}"
+    # templateFromClause: "  FROM ${from_list}"
+    # templateWhereClause: "  WHERE ${where_list}"
+    templateOrderByClause: "  ORDER BY ${order_by_list} LIMIT :limit"
+    templateTableInFromClause: "${table_name} AS ${alias}"
+    templateColumnInSelectList: "${column_name} AS ${alias}"
 
 # Channels definition
 channels:
+#  # Channel name/ID
+#  ordersFromDB:
+#    # ES cluster to be used for this channel.
+#    esCluster: Olympus152
+#    # The target ES Index
+#    esIndex: op
+#    # The target ES Type
+#    esType: order
+#    # Datasource for this channel (if JDBC/SQL based)
+#    datasource: ordersDS
+#    # Optional, if not defined it is <domain>.yaml
+#    domainDefinitionFile: order.yaml
+#    # Database timestamps time zone. If empty the local timezone is used
+#    dbTimeZoneId: PST
+#    # Max records in one run - optional, defaults to 1,000,000
+#    maxRecords: 40
+#    # Batch size - default is the global value
+#    batchSize: 20
   # Channel name/ID
-  ordersFromDB:
+  commoditiesFromPIMS:
     # ES cluster to be used for this channel.
     esCluster: Olympus152
     # The target ES Index
-    esIndex: op
+    esIndex: catalog
     # The target ES Type
-    esType: order
+    esType: commodities
     # Datasource for this channel (if JDBC/SQL based)
-    datasource: ordersDS
+    datasource: pimsDS
     # Optional, if not defined it is <domain>.yaml
-    domainDefinitionFile: order.yaml
+    domainDefinitionFile: pims_catalog.yaml
     # Database timestamps time zone. If empty the local timezone is used
     dbTimeZoneId: PST
     # Max records in one run - optional, defaults to 1,000,000

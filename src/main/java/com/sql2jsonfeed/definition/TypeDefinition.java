@@ -2,12 +2,7 @@ package com.sql2jsonfeed.definition;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.*;
 
 import com.sql2jsonfeed.util.Conversions;
 import org.apache.commons.lang.StringUtils;
@@ -147,7 +142,9 @@ public class TypeDefinition {
 	public void setFieldsMap(LinkedHashMap<String, FieldDefinition> fieldsMap) {
 		this.fieldsMap = fieldsMap;
 	}
-	
+
+	private String selectItemPrefix = null;
+
 	/**
 	 * Initialize and validate current type
 	 * @param typeName
@@ -181,8 +178,33 @@ public class TypeDefinition {
 			parentFieldName = StringUtils.substring(this.typeName, nameIndex + 1);
 		}
 	}
-	
-	private String selectItemPrefix = null;
+
+    /**
+     * Add the custom field mappings specific to this type and its subtypes
+     * @param fieldsMappings the mappings Map to add to
+     *
+     */
+	public void addToFieldsMappings(Map<String, Object> fieldsMappings) {
+        // Add own custom mappings
+        if (fieldsMap != null) {
+            for (FieldDefinition fieldDef: fieldsMap.values()) {
+               Map<String, String> fieldMappings = fieldDef.getMappings();
+               if (fieldMappings != null && !fieldMappings.isEmpty()) {
+                   fieldsMappings.put(fieldDef.getFieldName(), fieldMappings);
+               }
+            }
+        }
+        // Invite children to add their own field mappings
+        if (childTypes != null) {
+            for (TypeDefinition childType : childTypes) {
+                Map<String, Object> childFieldsMappings = new HashMap<String, Object>();
+                childType.addToFieldsMappings(childFieldsMappings);
+                if (!childFieldsMappings.isEmpty()) {
+                    fieldsMappings.put(childType.getTypeName(), childFieldsMappings);
+                }
+            }
+        }
+    }
 	
 	public String fieldAsSelectItem(String fieldName) {
 		return selectItemPrefix + fieldName;
