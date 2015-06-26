@@ -1,0 +1,56 @@
+Notes regarding time zones in ES and SQL Server
+
+1. SQL Server. The date values are coming back as dates with no timezone. Assuming the timezone is the SQL Server time zone or local time zone? TBD with a quick test.
+2. ElasticSearch: The date type is a special type which maps to JSON string type. It follows a specific format that can be explicitly set. All dates are UTC. Internally, a date maps to a number type long, with the added parsing stage from string to long and from long to string
+- We pass Date to ElasticSearch. It converts it to long, but keeps the date format to be used when converting to and from JSON
+- ES assumes all dates are in UTC. So they should be converted to UTC (if different time zone). Or we should specify the time zone.
+2. Date fields values are returned to Java as Strings with the format specified in mappings.
+
+
+----
+Approach
+
+1. Consider all dates in UTC for now. And keep the default format.
+2. The problem is when retrieving dates from ES (in Java). Need:
+   a. The expected type
+   b. If Date:
+	- convert from string to date object using ES XContentBuilder.defaultDatePrinter
+	?? How to get/where to keep the expected type ??
+
+--------
+Logs:
+
+1. First run - 1st batch
+
+Total records before this batch:0
+Channel ordersFromDB: start batch 1 from null
+Channel ordersFromDB: batch 1 took 174362 ms to bring 20 records
+Channel ordersFromDB: batch 1 took 87 ms to insert 8 domain objects; last ref=2015-03-01 00:02:41.317 last ID=OREUKK229600706JP
+---->
+ES: 2015-03-01T05:02:41.317Z
+
+2. First run - 2nd batch
+
+{last_ref_value=2015-03-01 00:02:41.317, limit=20}
+Channel ordersFromDB: batch 2 took 14531 ms to bring 20 records
+Channel ordersFromDB: batch 2 took 23 ms to insert 8 domain objects; last ref=2015-03-01 00:02:41.737 last ID=OREUKK229700639CA
+--> ES
+2015-03-01T05:02:41.737Z
+
+3. Second run - 1st batch
+Total records before this batch:15
+Max ref value before this batch:1.425186161737E12 ---> Sun Mar 01 00:02:41 EST 2015
+{last_ref_value=Sun Mar 01 00:02:41 EST 2015, limit=20}
+Channel ordersFromDB: batch 1 took 15718 ms to bring 20 records
+Channel ordersFromDB: batch 1 took 100 ms to insert 19 domain objects; last ref=2015-03-01 00:02:43.31 last ID=OREUKK229800894US
+
+4. Second run - 2nd batch
+{last_ref_value=2015-03-01 00:02:43.31, limit=20}
+Channel ordersFromDB: batch 2 took 13660 ms to bring 20 records
+Channel ordersFromDB: batch 2 took 21 ms to insert 10 domain objects; last ref=2015-03-01 00:02:43.877 last ID=OREUKK229900747IE
+
+--> 2015-03-01T05:02:43.877Z
+
+==============
+
+2015-03-01 00:02:41.737

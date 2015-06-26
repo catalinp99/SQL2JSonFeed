@@ -1,0 +1,120 @@
+---
+# Commodity. This is the main object.
+commodity:
+  # The field that uniquely identifies the domain / type
+  idField: commodityId
+  # Reference field - for sorting new values
+  refField: commodityId
+  # Additional sort fields
+#  sortFields:
+#    <sort_field>: ASC
+  # List of source tables for this type
+  tables:
+    # pdcommodity
+    pdcommodity:
+      as: "comm" # 'AS' in the select query
+      # Not used for now ...
+      primaryKeyFields:
+        - commodityId
+  # List of fields for this type
+  fields:
+    commodityId:
+      sqlExpression: "comm.commodityid"
+      type: LONG
+    merchantCode:
+      sqlExpression: "comm.merchantcode"
+      type: STRING
+      # Custom ES field mappings to be added before the index is created
+      # (only first time can they be created)
+      mappings:
+        index: "not_analyzed"
+        store: "yes"
+    sku:
+      sqlExpression: "comm.sku"
+      type: STRING
+    name:
+      sqlExpression: "comm.name"
+      type: STRING
+    shortDescription:
+      sqlExpression: "comm.shortdescription"
+      type: STRING
+    longDescription:
+      sqlExpression: "comm.longdescription"
+      type: STRING
+    weight:
+      sqlExpression: "comm.commodityweight"
+      type: DOUBLE
+    weightSource:
+      sqlExpression: "comm.commodityweightsource"
+      type: STRING
+    weight:
+      sqlExpression: "comm.commodityweight"
+      type: DOUBLE
+    # LENGTH
+    upc:
+      sqlExpression: "comm.upc"
+      type: STRING
+    brand:
+      sqlExpression: "comm.brand"
+      type: STRING
+    createDate:
+      sqlExpression: "comm.createtimestamp"
+      type: DATETIME
+    updateDate:
+      sqlExpression: "comm.updatetimestamp"
+      type: DATETIME
+
+# Category level settings
+commodity.category:
+  # relation to the parent type: one object or an array of object; not required for the top level object
+  # ONE | MANY
+  parentRelation: ONE
+  # the field that uniquely identifies the type
+  idField: categoryId
+  # List of source tables for this type
+  tables:
+    # pdcategory
+    pdcategory:
+      as: "cat"
+      primaryKeyFields:
+        - categoryId
+      join: # INNER | LEFT_OUTER for now
+        type: "INNER"
+        parentColumns:
+        - "comm.categoryId"
+        childColumns:
+        - "cat.categoryId"
+  fields:
+    categoryId:
+      sqlExpression: "cat.categoryId"
+      type: LONG
+    name:
+      sqlExpression: "cat.name"
+      type: STRING
+    description:
+      sqlExpression: "cat.description"
+      type: STRING
+    hsCode:
+      sqlExpression: "cat.hscode"
+      type: STRING
+      mappings:
+        index: "not_analyzed"
+        store: "yes"
+    hsSource:
+      sqlExpression: "cat.hssource"
+      type: STRING
+    url:
+      sqlExpression: "cat.url"
+      type: STRING
+    weight:
+      sqlExpression: "cat.weight"
+      type: DOUBLE
+    weightSource:
+      sqlExpression: "cat.weightsource"
+      type: STRING
+    categoryCodePath:
+      sqlExpression: "cat.categorycodepath"
+      type: STRING
+    categoryNamePath:
+      sqlExpression: "cat.categoryNamepath"
+      type: STRING
