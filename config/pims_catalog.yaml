@@ -27,6 +27,7 @@ commodity:
       # Custom ES field mappings to be added before the index is created
       # (only first time can they be created)
       mappings:
+        type: "string"
         index: "not_analyzed"
         store: "yes"
     sku:
@@ -98,6 +99,7 @@ commodity.category:
       sqlExpression: "cat.hscode"
       type: STRING
       mappings:
+        type: "string"
         index: "not_analyzed"
         store: "yes"
     hsSource:

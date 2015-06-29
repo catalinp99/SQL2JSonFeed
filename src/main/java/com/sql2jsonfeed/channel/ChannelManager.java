@@ -9,6 +9,7 @@ import java.util.Map;
 import com.sql2jsonfeed.definition.*;
 import com.sql2jsonfeed.util.Conversions;
 import org.apache.commons.lang.StringUtils;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -20,6 +21,7 @@ import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -204,13 +206,21 @@ public class ChannelManager {
             return; // nothing to do
         }
 
+        Client esClient = ESClientManager.get(esClusterName);
+        // Try to create index first - in case this is the first call
+        CreateIndexRequest createIndexRequest = new CreateIndexRequest(channelDefinition.getEsIndex());
+        try {
+            esClient.admin().indices().create(createIndexRequest).actionGet();
+        } catch (IndexAlreadyExistsException iaee) {
+            // Ignore
+        }
+
         PutMappingRequest putMappingRequest = new PutMappingRequest(/*index*/ channelDefinition.getEsIndex());
         putMappingRequest.type(channelDefinition.getEsType());
         putMappingRequest.source(domainDefinition.getAllFieldsMappings());
         putMappingRequest.ignoreConflicts(true);
 
-        Client esClient = ESClientManager.get(esClusterName);
-        esClient.admin().indices().putMapping(putMappingRequest);
+        esClient.admin().indices().putMapping(putMappingRequest).actionGet();
     }
 
     /**

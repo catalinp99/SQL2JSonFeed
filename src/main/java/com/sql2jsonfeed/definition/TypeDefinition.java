@@ -181,27 +181,40 @@ public class TypeDefinition {
 
     /**
      * Add the custom field mappings specific to this type and its subtypes
-     * @param fieldsMappings the mappings Map to add to
+     * @param parentFieldsMappings the mappings Map to add to
      *
      */
-	public void addToFieldsMappings(Map<String, Object> fieldsMappings) {
+	public void addToFieldsMappings(Map<String, Object> parentFieldsMappings) {
+        final String topFieldsKey = "properties";
+
+        Map<String, Object> thisFieldsMappings = new HashMap<String, Object>();
+
         // Add own custom mappings
         if (fieldsMap != null) {
             for (FieldDefinition fieldDef: fieldsMap.values()) {
                Map<String, String> fieldMappings = fieldDef.getMappings();
                if (fieldMappings != null && !fieldMappings.isEmpty()) {
-                   fieldsMappings.put(fieldDef.getFieldName(), fieldMappings);
+                   thisFieldsMappings.put(fieldDef.getFieldName(), fieldMappings);
                }
             }
         }
-        // Invite children to add their own field mappings
+
+        // Let children add their own field mappings - recursive
         if (childTypes != null) {
             for (TypeDefinition childType : childTypes) {
                 Map<String, Object> childFieldsMappings = new HashMap<String, Object>();
                 childType.addToFieldsMappings(childFieldsMappings);
                 if (!childFieldsMappings.isEmpty()) {
-                    fieldsMappings.put(childType.getTypeName(), childFieldsMappings);
+                    thisFieldsMappings.put(childType.getParentFieldName(), childFieldsMappings);
                 }
+            }
+        }
+
+        if (!thisFieldsMappings.isEmpty()) {
+            parentFieldsMappings.put(topFieldsKey, thisFieldsMappings);
+            if (parentFieldName != null) {
+                // Add type=object only for children
+                parentFieldsMappings.put("type", "object");
             }
         }
     }
