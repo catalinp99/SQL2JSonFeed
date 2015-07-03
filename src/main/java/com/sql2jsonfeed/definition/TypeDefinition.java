@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 import com.sql2jsonfeed.util.Conversions;
+import com.sun.org.apache.bcel.internal.generic.Select;
 import org.apache.commons.lang.StringUtils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -33,10 +34,14 @@ public class TypeDefinition {
  */
 
 	// Setup during init
-	@JsonIgnore
+    // e.g. order.parcels.parcelLines
 	private String typeName = null;
+    // parcelLines
 	private String parentFieldName = null;
+    // order.parcels
 	private String parentTypeName = null;
+    // parcels.parcelLines
+    private String typePath = null;
 	
 	private MultiplicityEnum parentRelation = null;
 	
@@ -53,6 +58,8 @@ public class TypeDefinition {
 	private LinkedHashMap<String, TableDefinition> tablesMap = null;
 	@JsonProperty("fields")
 	private LinkedHashMap<String, FieldDefinition> fieldsMap;
+    @JsonProperty("updates")
+    private LinkedHashMap<String, TypeUpdateDefinition> updatesMap;
 
 	// A list of children type definitions
 	private List<TypeDefinition> childTypes = null;
@@ -75,8 +82,12 @@ public class TypeDefinition {
 	public String getParentTypeName() {
 		return parentTypeName;
 	}
-	
-	public void addChildTypeDef(TypeDefinition childTypeDefinition) {
+
+    public String getTypePath() {
+        return typePath;
+    }
+
+    public void addChildTypeDef(TypeDefinition childTypeDefinition) {
 		if (childTypes == null) {
 			childTypes = new ArrayList<TypeDefinition>();
 		}
@@ -143,7 +154,15 @@ public class TypeDefinition {
 		this.fieldsMap = fieldsMap;
 	}
 
-	private String selectItemPrefix = null;
+    public LinkedHashMap<String, TypeUpdateDefinition> getUpdatesMap() {
+        return updatesMap;
+    }
+
+    public void setUpdatesMap(LinkedHashMap<String, TypeUpdateDefinition> updatesMap) {
+        this.updatesMap = updatesMap;
+    }
+
+    private String selectItemPrefix = null;
 
 	/**
 	 * Initialize and validate current type
@@ -151,6 +170,21 @@ public class TypeDefinition {
 	 */
 	public void init(String typeName) {
 		this.typeName = typeName;
+
+        // Init parent fields and prefix
+        int nameIndex = this.typeName.lastIndexOf(TYPE_NAME_SEP);
+        if (nameIndex <= 0) {
+            // This is the top level parent
+            selectItemPrefix = this.typeName + SQL_TYPE_SEP;
+        } else {
+            selectItemPrefix = StringUtils.replace(this.typeName, TYPE_NAME_SEP, SQL_TYPE_SEP) + SQL_TYPE_SEP;
+            parentTypeName = StringUtils.substring(this.typeName, 0, nameIndex);
+            parentFieldName = StringUtils.substring(this.typeName, nameIndex + 1);
+            // Get the objectPath
+            nameIndex = this.typeName.indexOf(TYPE_NAME_SEP);
+            typePath = StringUtils.substring(this.typeName, nameIndex + 1);
+        }
+
 		// Set the table name
 		if (tablesMap != null) {
 			for (Map.Entry<String, TableDefinition> entry: tablesMap.entrySet()) {
@@ -160,23 +194,21 @@ public class TypeDefinition {
 		
 		if (fieldsMap != null) {
 			for (Map.Entry<String, FieldDefinition> fieldEntry: fieldsMap.entrySet()) {
-				fieldEntry.getValue().setFieldName(fieldEntry.getKey());
+				fieldEntry.getValue().init(fieldEntry.getKey(), typePath);
 			}
 		}
+
+        if (updatesMap != null) {
+            for (Map.Entry<String, TypeUpdateDefinition> entry: updatesMap.entrySet()) {
+                FieldDefinition updateRefFieldDef = fieldsMap.get(entry.getValue().getRefField());
+                // TODO validate
+                assert (updateRefFieldDef != null);
+                entry.getValue().init(entry.getKey(), updateRefFieldDef);
+            }
+        }
 		
 		// TODO also validate field keys and other fields
 		assert(idFieldKey != null);
-		
-		// Init parent fields and prefix
-		int nameIndex = this.typeName.lastIndexOf(TYPE_NAME_SEP);
-		if (nameIndex <= 0) {
-			// This is the top level parent
-			selectItemPrefix = this.typeName + SQL_TYPE_SEP;
-		} else {
-			selectItemPrefix = StringUtils.replace(this.typeName, TYPE_NAME_SEP, SQL_TYPE_SEP) + SQL_TYPE_SEP;
-			parentTypeName = StringUtils.substring(this.typeName, 0, nameIndex);
-			parentFieldName = StringUtils.substring(this.typeName, nameIndex + 1);
-		}
 	}
 
     /**
@@ -238,11 +270,6 @@ public class TypeDefinition {
 			}
 		}
 		
-		// 2. Add sort by reference
-		if (refFieldKey != null) {
-			selectBuilder.orderBy(fieldAsSelectItem(refFieldKey), SortTypeEnum.ASC);
-		}
-		
 		// 2. add select fields, and sort by
 		if (getFieldsMap() != null) {
 			for (FieldDefinition fieldDef: getFieldsMap().values()) {
@@ -265,20 +292,6 @@ public class TypeDefinition {
 		}
 	}
 
-	public Map<String, Object> extractRow(ResultSet rs, int rowNum, TimeZone dbServerTimeZone) throws SQLException {
-		if (getFieldsMap() == null) {
-			return null;
-		}
-		
-		Map<String, Object> typeRowValues = new LinkedHashMap<String, Object>();
-		for (FieldDefinition fieldDef: getFieldsMap().values()) {
-			String columnLabel = fieldAsSelectItem(fieldDef.getFieldName());
-            Object value = Conversions.sqlToESValue(rs, fieldDef, columnLabel, dbServerTimeZone);
-			typeRowValues.put(fieldDef.getFieldName(), value);
-		}
-		return typeRowValues;
-	}
-
 	public FieldDefinition getRefFieldDef() {
 		if (StringUtils.isEmpty(refFieldKey)) {
 			return null;
@@ -293,9 +306,13 @@ public class TypeDefinition {
 
     /**
      * Add filtering by reference value (if refKey is not null)
+     * refField >= :last_ref_value
      * @param selectBuilder
      */
     public void addRefFilter(SelectBuilder selectBuilder) {
+        // Only root type can add ref filter
+        assert (parentFieldName == null);
+
         if (StringUtils.isNotEmpty(refFieldKey)) {
             FieldDefinition refFieldDef = fieldsMap.get(refFieldKey);
             assert(refFieldDef != null);
@@ -303,15 +320,74 @@ public class TypeDefinition {
         }
     }
 
+    public void addRefSort(SelectBuilder selectBuilder) {
+        // Only root type can add ref filter
+        assert (parentFieldName == null);
+        assert (refFieldKey != null);
 
-	@Override
-	public String toString() {
-		return "TypeDefinition [typeName=" + typeName + ", parentFieldName="
-				+ parentFieldName + ", parentTypeName=" + parentTypeName
-				+ ", parentRelation=" + parentRelation + ", idFieldKey="
-				+ idFieldKey + ", refFieldKey=" + refFieldKey + ", sortFields="
-				+ sortFields + ", tablesMap=" + tablesMap + ", fieldsMap="
-				+ fieldsMap + ", childTypes=" + childTypes
-				+ ", selectItemPrefix=" + selectItemPrefix + "]";
-	}
+        selectBuilder.orderBy(fieldAsSelectItem(refFieldKey), SortTypeEnum.ASC);
+    }
+
+    /**
+     * Add filtering and sorting fields
+     * refField <= :last_ref_value and refUpdateField >= :last_ref_update_value
+     * Add additional where clauses
+     * Add sort by refUpdateField
+     */
+    public void addUpdateFiltersAndSort(SelectBuilder selectBuilder,FieldDefinition refFieldDef, TypeUpdateDefinition
+            typeUpdateDef) {
+
+        // Filters
+        selectBuilder.where(refFieldDef.getSqlExpression() + " <= :" + SelectBuilder.P_REF_VALUE);
+        selectBuilder.where(typeUpdateDef.getRefFieldDef().getSqlExpression() + " >= :" + SelectBuilder
+                .P_REF_UPDATE_VALUE);
+        selectBuilder.where(typeUpdateDef.getWhereFilters());
+
+        // Sort by
+        selectBuilder.orderByFirst(fieldAsSelectItem(typeUpdateDef.getRefField()), SortTypeEnum.ASC);
+    }
+
+    public Map<String, Object> extractRow(ResultSet rs, int rowNum, TimeZone dbServerTimeZone) throws SQLException {
+        if (getFieldsMap() == null) {
+            return null;
+        }
+
+        Map<String, Object> typeRowValues = new LinkedHashMap<String, Object>();
+        for (FieldDefinition fieldDef: getFieldsMap().values()) {
+            String columnLabel = fieldAsSelectItem(fieldDef.getFieldName());
+            Object value = Conversions.sqlToESValue(rs, fieldDef, columnLabel, dbServerTimeZone);
+            typeRowValues.put(fieldDef.getFieldName(), value);
+        }
+        return typeRowValues;
+    }
+
+    public boolean hasUpdates() {
+        return updatesMap != null && !updatesMap.isEmpty();
+    }
+
+    public Collection<TypeUpdateDefinition> getUpdateTypeDefs() {
+        if (!hasUpdates()) {
+            return null;
+        }
+        return updatesMap.values();
+    }
+
+    @Override
+    public String toString() {
+        return "TypeDefinition{" +
+                "typeName='" + typeName + '\'' +
+                ", parentFieldName='" + parentFieldName + '\'' +
+                ", parentTypeName='" + parentTypeName + '\'' +
+                ", parentRelation=" + parentRelation +
+                ", idFieldKey='" + idFieldKey + '\'' +
+                ", refFieldKey='" + refFieldKey + '\'' +
+                ", sortFields=" + sortFields +
+                ", whereFilters=" + whereFilters +
+                ", tablesMap=" + tablesMap +
+                ", fieldsMap=" + fieldsMap +
+                ", updatesMap=" + updatesMap +
+                ", childTypes=" + childTypes +
+                ", selectItemPrefix='" + selectItemPrefix + '\'' +
+                '}';
+    }
 }

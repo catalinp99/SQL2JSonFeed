@@ -201,6 +201,16 @@ public class DomainDefinition {
 		return selectBuilder;
 	}
 
+    public Collection<TypeDefinition> getAllTypeDefs() {
+        return typesMap.values();
+    }
+
+    public SelectBuilder addRefSort(SelectBuilder selectBuilder) {
+        // Add only for the root
+        rootTypeDef.addRefSort(selectBuilder);
+        return selectBuilder;
+    }
+
 	public FieldDefinition getRefFieldDef() {
 		// TODO Auto-generated method stub
 		return rootTypeDef.getRefFieldDef();

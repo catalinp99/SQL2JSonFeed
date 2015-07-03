@@ -3,8 +3,8 @@
 # Order. This is the main object.
 order:
   # the field that uniquely identifies the domain / type
-  idField: commodityId
-  # reference field - for sorting new values
+  idField: orderNumber
+  # reference field - for sorting new values - required
   refField: localPlacedDate
   # Additional sort fields
   sortFields:
@@ -26,18 +26,6 @@ order:
         - "cpOrder.OrderDetailsId"
         childColumns:
         - "cpOrderDetails.OrderDetailsId"
-  # Additional where filters
-  whereFilters:
-#    - "cpOrder.Status = 'PLACED'"
-    - "cpOrder.CpPlacedDate > '2015-03-01 00:00:00.000'"
-# Multiple update scenarios
-#  update:
-#    cancelled:
-#      refField: cancelDate
-#      whereFilter: "cpOrder.Status='CANCELLED' AND cpOrder.CancelDate > ${max:cancelDate:datetime}"
-#    confirmed:
-#      refField: localConfirmDate
-#      whereFilter: "cpOrder.Status='CONFIRMED' AND cpOrder.cpConfirmDate > ${max:localConfirmDate:datetime}"
   # List of fields for this type
   fields:
     orderNumber:
@@ -79,6 +67,31 @@ order:
     hubId:
       sqlExpression: "cpOrder.HubId"
       type: STRING
+  # Additional global where filters
+  whereFilters:
+#    - "cpOrder.Status = 'PLACED'"
+    - "cpOrder.CpPlacedDate > '2015-03-01 00:00:00.000'"
+# Multiple update scenarios
+#  update:
+#    cancelled:
+#      refField: cancelDate
+#      whereFilter: "cpOrder.Status='CANCELLED' AND cpOrder.CancelDate > ${max:cancelDate:datetime}"
+#    confirmed:
+#      refField: localConfirmDate
+#      whereFilter: "cpOrder.Status='CONFIRMED' AND cpOrder.cpConfirmDate > ${max:localConfirmDate:datetime}"
+  # Where filter to update existing records
+  updates:
+    # Confirmed orders
+    order.confirmed:
+      # Unique ID to identify the update type
+      refField: localConfirmDate
+      # The max filters automatically added: cpOrder.CpPlacedDate <= :MAX(localPlacedDate) && cpOrder.CpConfirmDate >=
+      # MAX(localConfirmedDate)
+      whereFilters:
+        - "cpOrder.CpConfirmDate > cpOrder.CpPlacedDate AND cpOrder.Status='CONFIRMED'"
+    # TODO cancelled
+#    - "(cpOrder.CpPlacedDate <= :max_reference AND cpOrder.CpConfirmDate > cpOrder.cpPlacedDate AND cpOrder
+#    .CpConfirmDate > $$MAX())"
 
 # CONSIGNEE ADDRESS
 order.consignee:
@@ -278,6 +291,15 @@ order.inboundParcels:
     parcelIdentification:
       sqlExpression: "cpInboundParcel.Identification"
       type: STRING
+  updates:
+    # Unique name to identify the update type
+    inbundParcels.new:
+      refField: placedDate
+      # The max filters automatically added: cpOrder.CpPlacedDate <= :MAX(localPlacedDate) && cpInboundParcel
+      # .PlacedDate >= :MAX(inboundParcel.PlacedDate)
+      # MAX(localConfirmedDate)
+      whereFilters:
+        - "cpInboundParcel.PlacedDate > cpOrder.CpPlacedDate"
 # inbound parcel lines
 order.inboundParcels.inboundParcelLines:
   # relation to the parent type: one object or an array of object; not required for the top level object

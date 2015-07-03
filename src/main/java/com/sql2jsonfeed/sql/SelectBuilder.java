@@ -13,8 +13,9 @@ public class SelectBuilder {
 	// TODO Move them to a different place
 	public static final String P_LIMIT = "limit";
 	public static final String P_REF_VALUE = "last_ref_value";
+    public static final String P_REF_UPDATE_VALUE = "last_upd_ref_value";
 
-	// SQL templates to be used wen generating the SELECT statement
+    // SQL templates to be used wen generating the SELECT statement
 	private SqlTemplates sqltemplates = null;
 
 	// Builders
@@ -26,6 +27,20 @@ public class SelectBuilder {
 	public SelectBuilder(SqlTemplates sqltemplates) {
 		this.sqltemplates = sqltemplates;
 	}
+
+    /**
+     * Create a copy of this SelectBuilder
+     * @return
+     */
+    public SelectBuilder clone() {
+        SelectBuilder newBuilder = new SelectBuilder(this.sqltemplates);
+        newBuilder.selectListBuilder.append(this.selectListBuilder.toString());
+        newBuilder.fromListBuilder.append(this.fromListBuilder.toString());
+        newBuilder.whereListBuilder.append(this.whereListBuilder.toString());
+        newBuilder.orderByBuilder.append(this.orderByBuilder.toString());
+
+        return newBuilder;
+    }
 
 	public SelectBuilder select(String columnExpression, String asName) {
 		if (selectListBuilder.length() > 0) {
@@ -82,6 +97,15 @@ public class SelectBuilder {
 		return this;
 	}
 
+    public SelectBuilder where(List<String> whereConditionList) {
+        if (whereConditionList != null) {
+            for (String whereCondition: whereConditionList) {
+                this.where(whereCondition);
+            }
+        }
+        return this;
+    }
+
 	public SelectBuilder orderBy(String orderByField, SortTypeEnum sortType) {
 		if (orderByBuilder.length() > 0) {
 			orderByBuilder.append(SqlTemplates.NL).append(SqlTemplates.INDENT)
@@ -96,7 +120,26 @@ public class SelectBuilder {
 		return this;
 	}
 
-	public String buildSelectQuery() {
+    /**
+     * Add to the order by as the first
+     * @param orderByField
+     * @param sortType
+     * @return
+     */
+    public SelectBuilder orderByFirst(String orderByField, SortTypeEnum sortType) {
+        if (orderByBuilder.length() > 0) {
+            orderByBuilder.insert(0, SqlTemplates.NL + SqlTemplates.INDENT + SqlTemplates.COMMA);
+        }
+        if (sortType == SortTypeEnum.ASC) {
+            orderByBuilder.insert(0, orderByField + " ASC");
+        } else {
+            orderByBuilder.insert(0, orderByField + " DESC");
+        }
+        return this;
+    }
+
+
+    public String buildSelectQuery() {
 		// Use template commons substr
 		// private String templateSelectClause =
 		// "SELECT TOP :limit ${select_list}";

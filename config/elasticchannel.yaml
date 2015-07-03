@@ -49,39 +49,39 @@ sqlTemplates:
 
 # Channels definition
 channels:
-#  # Channel name/ID
-#  ordersFromDB:
+  # Channel name/ID
+  ordersFromDB:
+    # ES cluster to be used for this channel.
+    esCluster: Olympus152
+    # The target ES Index
+    esIndex: op
+    # The target ES Type
+    esType: order
+    # Datasource for this channel (if JDBC/SQL based)
+    datasource: ordersDS
+    # Optional, if not defined it is <domain>.yaml
+    domainDefinitionFile: order.yaml
+    # Database timestamps time zone. If empty the local timezone is used
+    dbTimeZoneId: PST
+    # Max records in one run - optional, defaults to 1,000,000
+    maxRecords: 80
+    # Batch size - default is the global value
+    batchSize: 40
+  # Channel name/ID
+#  commoditiesFromPIMS:
 #    # ES cluster to be used for this channel.
 #    esCluster: Olympus152
 #    # The target ES Index
-#    esIndex: op
+#    esIndex: catalog
 #    # The target ES Type
-#    esType: order
+#    esType: commodities
 #    # Datasource for this channel (if JDBC/SQL based)
-#    datasource: ordersDS
+#    datasource: pimsDS
 #    # Optional, if not defined it is <domain>.yaml
-#    domainDefinitionFile: order.yaml
+#    domainDefinitionFile: pims_catalog.yaml
 #    # Database timestamps time zone. If empty the local timezone is used
 #    dbTimeZoneId: PST
 #    # Max records in one run - optional, defaults to 1,000,000
 #    maxRecords: 40
 #    # Batch size - default is the global value
 #    batchSize: 20
-  # Channel name/ID
-  commoditiesFromPIMS:
-    # ES cluster to be used for this channel.
-    esCluster: Olympus152
-    # The target ES Index
-    esIndex: catalog
-    # The target ES Type
-    esType: commodities
-    # Datasource for this channel (if JDBC/SQL based)
-    datasource: pimsDS
-    # Optional, if not defined it is <domain>.yaml
-    domainDefinitionFile: pims_catalog.yaml
-    # Database timestamps time zone. If empty the local timezone is used
-    dbTimeZoneId: PST
-    # Max records in one run - optional, defaults to 1,000,000
-    maxRecords: 40
-    # Batch size - default is the global value
-    batchSize: 20

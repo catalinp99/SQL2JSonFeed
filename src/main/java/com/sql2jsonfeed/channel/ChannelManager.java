@@ -1,10 +1,6 @@
 package com.sql2jsonfeed.channel;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import com.sql2jsonfeed.definition.*;
 import com.sql2jsonfeed.util.Conversions;
@@ -23,14 +19,11 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.indices.IndexMissingException;
-import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.metrics.max.Max;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.sql2jsonfeed.ESClientManager;
 import com.sql2jsonfeed.config.ChannelConfigData;
 import com.sql2jsonfeed.config.ConfigManager;
@@ -44,6 +37,9 @@ import com.sql2jsonfeed.sql.SqlTemplates;
  */
 public class ChannelManager {
 
+    // Automatic field to be added to any domain object
+    public static final String FIELD_CHANNEL = "channel_";
+    private static ObjectMapper mapper = new ObjectMapper();
     private String channelName;
     private ConfigManager configManager;
     private ChannelDefinition channelDefinition;
@@ -52,9 +48,6 @@ public class ChannelManager {
     private int batchSize;
     private int maxRecords;
     private String esClusterName = null;
-
-    // Automatic field to be added to any domain object
-    public static final String FIELD_CHANNEL = "channel_";
 
     public ChannelManager(String channelName, ConfigManager configManager,
                           ChannelDefinition channelDefinition,
@@ -102,11 +95,9 @@ public class ChannelManager {
 
         // Init variables
         // JDBC DATA SOURCE
-        DatasourceDefinition dataSourceDef = configManager
-                .getDatasourceDef(channelDefinition.getDatasourceName());
+        DatasourceDefinition dataSourceDef = configManager.getDatasourceDef(channelDefinition.getDatasourceName());
         // SQL TEMPLATES (per jdbc driver)
-        SqlTemplates sqlTemplates = configManager.getSqlTemplates(dataSourceDef
-                .getJdbcDriverClassName());
+        SqlTemplates sqlTemplates = configManager.getSqlTemplates(dataSourceDef.getJdbcDriverClassName());
         // Previously persisted config data
         ChannelConfigData configData = lookupConfigData();
         // Reference field
@@ -131,62 +122,44 @@ public class ChannelManager {
 
         // 1. Create and initialize the select builder and row handler - only
         // first time
-        SelectBuilder selectBuilder = domainDefinition
-                .buildSelect(new SelectBuilder(sqlTemplates));
-        if (lastReferenceValue != null) {
-            domainDefinition.addRefFilter(selectBuilder);
-        }
-        DomainRowCallbackHandler domainRowHandler = new DomainRowCallbackHandler(
-                this);
-
+        SelectBuilder mainSelectBuilder = domainDefinition.buildSelect(new SelectBuilder(sqlTemplates));
         // JDBC template and parameters
         NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(
                 dataSourceDef.getDataSource());
-        Map<String, Object> jdbcParamsMap = new HashMap<String, Object>();
-        jdbcParamsMap.put(SelectBuilder.P_LIMIT, batchSize);
-        boolean done = false;
-        int batchCount = 0;
+        ArrayList<ChannelSqlFetcher> updateSqlFetchers = new ArrayList<ChannelSqlFetcher>();
 
-        while (!done) {
-            ++batchCount;
-            // TODO log
-            long startTime = System.currentTimeMillis();
-            System.out.println("Channel " + channelName + ": start batch "
-                    + batchCount + " from " + lastReferenceValue);
-            // a. add conditional placeholder values
-            if (lastReferenceValue != null) {
-                Object lastRefValueSql = Conversions.localToSqlValue(lastReferenceValue, refFieldDef, channelDefinition.getDbTimeZone());
-                System.out.println("Channel " + channelName + " batch " + batchCount + " - SQL ref value:" + lastRefValueSql);
-                jdbcParamsMap
-                        .put(SelectBuilder.P_REF_VALUE, lastRefValueSql);
+        // 2. Create update sql fetchers
+        for (TypeDefinition typeDef: domainDefinition.getAllTypeDefs()) {
+            if (typeDef.hasUpdates()) {
+                for (TypeUpdateDefinition typeUpdateDef: typeDef.getUpdateTypeDefs()) {
+                    SelectBuilder updateSelectBuilder = mainSelectBuilder.clone();
+                    typeDef.addUpdateFiltersAndSort(updateSelectBuilder, domainDefinition.getRefFieldDef(), typeUpdateDef);
+                    updateSqlFetchers.add(new ChannelSqlFetcher(this, updateSelectBuilder, jdbcTemplate, batchSize,
+                            -1, typeUpdateDef));
+                }
             }
-            // b. Execute the actual query
-            domainRowHandler.reset();
-            String query = selectBuilder.buildSelectQuery();
-            System.out.println(query);
-            System.out.println(jdbcParamsMap);
-            jdbcTemplate.query(query, jdbcParamsMap, domainRowHandler);
-            // Add reference filter to SQL in preparation for next run
-            if (lastReferenceValue == null) {
-                domainDefinition.addRefFilter(selectBuilder);
-            }
-            System.out.println("Channel " + channelName + ": batch "
-                    + batchCount + " took "
-                    + (System.currentTimeMillis() - startTime)
-                    + " ms to bring " + domainRowHandler.getBatchRecordCount()
-                    + " records");
+        }
 
-            // c. Retrieve domain objects
-            LinkedHashMap<String, Map<String, Object>> domainObjectMap = domainRowHandler
+        domainDefinition.addRefSort(mainSelectBuilder);
+        if (lastReferenceValue != null) {
+            domainDefinition.addRefFilter(mainSelectBuilder);
+        }
+
+        boolean hasMore = true;
+
+        ChannelSqlFetcher newDataSqlFetcher = new ChannelSqlFetcher(this, mainSelectBuilder, jdbcTemplate, batchSize,
+                maxRecords, null);
+
+        while (hasMore)  {
+            // Check new fields
+            hasMore = newDataSqlFetcher.processNewBatch(lastReferenceValue, null);
+
+            LinkedHashMap<String, Map<String, Object>> domainObjectMap = newDataSqlFetcher
                     .getDomainObjectMap();
-            if (domainObjectMap.isEmpty()) {
-                done = true;
-            } else {
-                done = (domainRowHandler.getBatchRecordCount() < batchSize || domainRowHandler
-                        .getRowCount() >= maxRecords);
+            if (!domainObjectMap.isEmpty()) {
                 // Store domain object into ES
-                lastReferenceValue = storeValues(domainObjectMap, batchCount,
-                        done);
+                lastReferenceValue = storeValues(domainObjectMap, newDataSqlFetcher.getBatchCount(),
+                        !hasMore);
                 if (refFieldDef != null) {
                     configData.setLastRefValue(refFieldDef.getFieldName(),
                             lastReferenceValue);
@@ -194,6 +167,20 @@ public class ChannelManager {
                 configData.setLastExecutionDate(new Date());
                 persistConfigData(configData, veryFirstTime);
                 veryFirstTime = false;
+
+                // Do the updates
+                // Nu merge pentru ca nu vin in ordinea de sortare potrivita in cazul sub obiectelor. Trebuie facut
+                // append la existing values.
+//                for (ChannelSqlFetcher updateSqlFetcher: updateSqlFetchers) {
+//                    boolean hasMoreUpdate = true;
+//                    Object lastUpdateReferenceValue = getChannelMaxFieldValue(updateSqlFetcher
+//                            .getTypeUpdateDefinition().getRefFieldDef());
+//
+//                    while (hasMoreUpdate) {
+//                        hasMoreUpdate = updateSqlFetcher.processNewBatch(lastReferenceValue, lastUpdateReferenceValue);
+//
+//                    }
+//                }
             }
         }
     }
@@ -234,6 +221,14 @@ public class ChannelManager {
             // No reference field, return null
             return null;
         }
+        return getChannelMaxFieldValue(refFieldDef);
+    }
+
+    private Object getChannelMaxFieldValue(FieldDefinition fieldDef) {
+        if (fieldDef == null) {
+            // No reference field, return null
+            return null;
+        }
         Client esClient = ESClientManager.get(esClusterName);
         // Create search request
         final String maxRef = "maxRef";
@@ -243,7 +238,7 @@ public class ChannelManager {
         // REPLACE WITH TERM
         searchRequestBuilder.setQuery(QueryBuilders.matchQuery(ChannelManager.FIELD_CHANNEL, channelDefinition.getName()));
         searchRequestBuilder.addAggregation(AggregationBuilders.max(maxRef).field(
-                refFieldDef.getFieldName()));
+                fieldDef.getFieldPath()));
         searchRequestBuilder.setSize(0);
 
         SearchResponse searchResponse = null;
@@ -264,12 +259,14 @@ public class ChannelManager {
             return null; // first time
         }
         Max maxAgg = searchResponse.getAggregations().get(maxRef);
-        Object maxValue = Conversions.fromEsValue(maxAgg.getValue(), refFieldDef.getFieldType(), null);
+        Object maxValue = Conversions.fromEsValue(maxAgg.getValue(), fieldDef.getFieldType(), null);
 
         // How to cast to a date
-        System.out.println("Max ref value before this batch:" + maxAgg.getValue() + " ---> " + maxValue);
+        System.out.println("Max " + fieldDef.getFieldPath() + " value before this batch:" + maxAgg.getValue() + " " +
+                "---> " + maxValue);
 
         return maxValue;
+
     }
 
     /**
@@ -335,8 +332,6 @@ public class ChannelManager {
 
         return lastRefValue;
     }
-
-    private static ObjectMapper mapper = new ObjectMapper();
 
     /**
      * @return previously persisted channel config data.

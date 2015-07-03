@@ -19,6 +19,10 @@ public class FieldDefinition {
  */
 	@JsonIgnore
 	private String fieldName = null;
+    @JsonIgnore
+    private String parentTypePath = null;
+    @JsonIgnore
+    private String fieldPath = null;
 
 	private String sqlExpression = null;
 	@JsonProperty("type")
@@ -30,15 +34,31 @@ public class FieldDefinition {
 		super();
 	}
 
+    /**
+     * Must be called when initializing
+     */
+    public void init(String fieldName, String parentTypePath) {
+        this.fieldName = fieldName;
+        this.parentTypePath = parentTypePath;
+        this.fieldPath = fieldName;
+        if (parentTypePath != null) {
+            this.fieldPath = parentTypePath + TypeDefinition.TYPE_NAME_SEP + fieldName;
+        }
+    }
+
 	public String getFieldName() {
 		return fieldName;
 	}
 
-	public void setFieldName(String fieldName) {
-		this.fieldName = fieldName;
-	}
+    public String getParentTypePath() {
+        return parentTypePath;
+    }
 
-	public String getSqlExpression() {
+    public String getFieldPath() {
+        return fieldPath;
+    }
+
+    public String getSqlExpression() {
 		return sqlExpression;
 	}
 
